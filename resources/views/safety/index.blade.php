@@ -865,13 +865,10 @@
              const peopleId = formData.get('people_id');
              const certificateId = formData.get('certificate_id');
              
-             fetch(`/safety/update-certificate/${peopleId}/${certificateId}`, {
-                 method: 'POST',
-                 headers: {
-                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                 },
-                 body: formData
-             })
+                              fetch(`/safety/update-certificate/${peopleId}/${certificateId}`, {
+                     method: 'POST',
+                     body: formData
+                 })
              .then(response => {
                  if (!response.ok) {
                      throw new Error(`HTTP error! status: ${response.status}`);
@@ -943,7 +940,7 @@
             
             const formData = new FormData(this);
             
-            fetch('/safety/store-person', {
+            fetch('http://80.87.193.89:8081/safety/store-person', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -986,7 +983,7 @@
                 requestData.expiry_date = futureDate.toISOString().split('T')[0];
             }
             
-            fetch('/safety/store-certificate', {
+            fetch('http://80.87.193.89:8081/safety/store-certificate', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
