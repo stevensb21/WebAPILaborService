@@ -221,6 +221,9 @@ class SafetyController extends Controller
     public function storePerson(Request $request)
     {
         try {
+            // Логируем входящие данные для отладки
+            \Log::info('SafetyController::storePerson request data:', $request->all());
+            \Log::info('SafetyController::storePerson files:', $request->allFiles());
             $request->validate([
                 'full_name' => 'required|string|max:255',
                 'position' => 'nullable|string|max:255',
@@ -258,7 +261,7 @@ class SafetyController extends Controller
             // Обработка загрузки паспорта 1 страница
             if ($request->hasFile('passport_page_1')) {
                 $passport1 = $request->file('passport_page_1');
-                $passport1Name = time() . '_passport1_' . $passport1Name;
+                $passport1Name = time() . '_passport1_' . $passport1->getClientOriginalName();
                 
                 // Сохраняем файл напрямую без использования storeAs
                 $passport1Path = 'passports/' . $passport1Name;
@@ -266,7 +269,7 @@ class SafetyController extends Controller
                 $passport1->move(dirname($fullPath), basename($fullPath));
                 
                 $data['passport_page_1'] = $passport1Path;
-                $data['passport_page_1_original_name'] = $passport1Name;
+                $data['passport_page_1_original_name'] = $passport1->getClientOriginalName();
                 $data['passport_page_1_mime_type'] = 'application/pdf';
                 $data['passport_page_1_size'] = filesize($fullPath);
             }
@@ -274,7 +277,7 @@ class SafetyController extends Controller
             // Обработка загрузки паспорта 5 страница
             if ($request->hasFile('passport_page_5')) {
                 $passport5 = $request->file('passport_page_5');
-                $passport5Name = time() . '_passport5_' . $passport5Name;
+                $passport5Name = time() . '_passport5_' . $passport5->getClientOriginalName();
                 
                 // Сохраняем файл напрямую без использования storeAs
                 $passport5Path = 'passports/' . $passport5Name;
@@ -282,7 +285,7 @@ class SafetyController extends Controller
                 $passport5->move(dirname($fullPath), basename($fullPath));
                 
                 $data['passport_page_5'] = $passport5Path;
-                $data['passport_page_5_original_name'] = $passport5Name;
+                $data['passport_page_5_original_name'] = $passport5->getClientOriginalName();
                 $data['passport_page_5_mime_type'] = 'application/pdf';
                 $data['passport_page_5_size'] = filesize($fullPath);
             }
@@ -291,6 +294,12 @@ class SafetyController extends Controller
 
             return response()->json(['success' => true, 'person' => $person]);
         } catch (\Exception $e) {
+            \Log::error('SafetyController::storePerson error:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false, 
                 'message' => 'Ошибка при создании человека: ' . $e->getMessage()
