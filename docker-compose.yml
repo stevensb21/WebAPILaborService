@@ -28,7 +28,7 @@ services:
     image: nginx:alpine
     container_name: laravel-nginx
     ports:
-      - "8081:80"   # можно заменить на 80, если свободно
+      - "80:80"   # используем порт 80
     volumes:
       - ./public:/var/www/html/public
       - ./storage/app/public:/var/www/html/public/storage

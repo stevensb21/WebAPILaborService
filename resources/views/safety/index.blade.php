@@ -940,7 +940,7 @@
             
             const formData = new FormData(this);
             
-            fetch('http://80.87.193.89:8081/safety/store-person', {
+            fetch('/safety/store-person', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -983,7 +983,7 @@
                 requestData.expiry_date = futureDate.toISOString().split('T')[0];
             }
             
-            fetch('http://80.87.193.89:8081/safety/store-certificate', {
+            fetch('/safety/store-certificate', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
