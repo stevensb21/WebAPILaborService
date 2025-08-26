@@ -9,7 +9,14 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www
 COPY . .
 
-RUN chown -R www-data:www-data /var/www
+# Создаем необходимые директории и устанавливаем права
+RUN mkdir -p /var/www/storage/app/public/photos \
+    && mkdir -p /var/www/storage/app/public/passports \
+    && mkdir -p /var/www/storage/app/public/certificates \
+    && mkdir -p /var/www/storage/app/public/uploads/people \
+    && chown -R www-data:www-data /var/www \
+    && chmod -R 775 /var/www/storage \
+    && chmod -R 775 /var/www/bootstrap/cache
 
 EXPOSE 9000
 CMD ["php-fpm"]

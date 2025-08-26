@@ -23,6 +23,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
-docker-compose.yml
-Dockerfile
-.dockerignore
+# docker-compose.yml
+# Dockerfile
+# .dockerignore
