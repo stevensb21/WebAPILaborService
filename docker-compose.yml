@@ -30,8 +30,8 @@ services:
     ports:
       - "8081:80"   # можно заменить на 80, если свободно
     volumes:
-      - ./public:/var/www/public
-      - ./storage/app/public:/var/www/public/storage
+      - ./public:/var/www/html/public
+      - ./storage/app/public:/var/www/html/public/storage
       - .:/var/www/html
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
     depends_on:
