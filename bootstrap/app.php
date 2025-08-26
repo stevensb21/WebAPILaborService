@@ -15,6 +15,17 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'upload.limits' => \App\Http\Middleware\IncreaseUploadLimits::class,
         ]);
+        
+        // Исключения для CSRF защиты
+        $middleware->validateCsrfTokens(except: [
+            'safety/store-person',
+            'safety/update-person/*',
+            'safety/store-certificate',
+            'safety/update-certificate/*',
+            'safety/update-certificate-info/*',
+            'safety/delete-person/*',
+            'safety/delete-certificate/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
