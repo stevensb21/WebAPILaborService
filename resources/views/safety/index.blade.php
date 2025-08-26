@@ -942,6 +942,7 @@
             
             fetch('/safety/store-person', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                 },
