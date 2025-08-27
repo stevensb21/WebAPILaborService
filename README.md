@@ -1,61 +1,168 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# WebAPI Labor Service
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel API для управления трудовыми ресурсами и сертификатами.
 
-## About Laravel
+## 🚀 Быстрый старт
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### Локальная разработка
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+```bash
+# Клонирование репозитория
+git clone https://github.com/your-username/WebAPILaborService.git
+cd WebAPILaborService
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+# Запуск в Docker (Windows)
+quick-start.bat
 
-## Learning Laravel
+# Или вручную
+docker-compose up -d
+docker-compose exec laravel-app php artisan migrate
+docker-compose exec laravel-app php artisan storage:link
+docker-compose exec laravel-app php artisan key:generate
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Доступ к приложению
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- **Локально**: http://localhost:8081
+- **API документация**: http://localhost:8081/api-test.html
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 📋 Функциональность
 
-## Laravel Sponsors
+- Управление персоналом
+- Управление сертификатами
+- API для интеграции
+- Загрузка файлов
+- Система отчетов
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## 🛠 Технологии
 
-### Premium Partners
+- **Backend**: Laravel 12, PHP 8.2
+- **База данных**: PostgreSQL 17
+- **Веб-сервер**: Nginx
+- **Контейнеризация**: Docker & Docker Compose
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## 📚 Документация
 
-## Contributing
+- [Быстрый старт](QUICK_START.md)
+- [API документация](API_DOCUMENTATION.md)
+- [Примеры API](API_EXAMPLES.md)
+- [Развертывание на сервере](DEPLOYMENT.md)
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## 🚀 Развертывание на сервере
 
-## Code of Conduct
+### Подготовка сервера
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+1. Установите Docker и Docker Compose
+2. Клонируйте репозиторий
+3. Настройте переменные окружения
+4. Добавьте SSL сертификаты
 
-## Security Vulnerabilities
+### Автоматическое развертывание
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+# Настройка конфигурации
+cp env.production.example .env
+# Отредактируйте .env файл
 
-## License
+# Запуск развертывания
+chmod +x deploy.sh
+./deploy.sh
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Ручное развертывание
+
+```bash
+docker-compose -f docker-compose.prod.yml up -d --build
+docker-compose -f docker-compose.prod.yml exec -T laravel-app php artisan migrate --force
+docker-compose -f docker-compose.prod.yml exec -T laravel-app php artisan storage:link
+docker-compose -f docker-compose.prod.yml exec -T laravel-app php artisan key:generate --force
+```
+
+## 📁 Структура проекта
+
+```
+WebAPILaborService/
+├── app/
+│   ├── Http/Controllers/Api/     # API контроллеры
+│   └── Models/                   # Модели данных
+├── database/
+│   ├── migrations/               # Миграции БД
+│   └── seeders/                  # Сидеры данных
+├── routes/
+│   └── api.php                   # API маршруты
+├── storage/                      # Файлы приложения
+├── docker-compose.yml            # Docker Compose (разработка)
+├── docker-compose.prod.yml       # Docker Compose (продакшн)
+├── Dockerfile                    # Docker образ (разработка)
+├── Dockerfile.prod               # Docker образ (продакшн)
+├── deploy.sh                     # Скрипт развертывания
+└── README.md                     # Документация
+```
+
+## 🔧 Управление
+
+### Локальная разработка
+
+```bash
+# Запуск
+docker-compose up -d
+
+# Остановка
+docker-compose down
+
+# Логи
+docker-compose logs -f
+
+# Вход в контейнер
+docker-compose exec laravel-app bash
+```
+
+### Продакшн
+
+```bash
+# Запуск
+docker-compose -f docker-compose.prod.yml up -d
+
+# Остановка
+docker-compose -f docker-compose.prod.yml down
+
+# Логи
+docker-compose -f docker-compose.prod.yml logs -f
+
+# Обновление
+git pull origin main
+docker-compose -f docker-compose.prod.yml up -d --build
+```
+
+## 🔒 Безопасность
+
+- HTTPS обязателен в продакшн
+- Настройте файрвол
+- Регулярно обновляйте систему
+- Мониторьте логи
+
+## 📊 Мониторинг
+
+```bash
+# Статус контейнеров
+docker-compose ps
+
+# Использование ресурсов
+docker stats
+
+# Логи приложения
+docker-compose logs -f laravel-app
+```
+
+## 🆘 Поддержка
+
+При возникновении проблем:
+
+1. Проверьте логи: `docker-compose logs -f`
+2. Убедитесь, что все переменные окружения настроены
+3. Проверьте права доступа к файлам
+4. Очистите кэш: `php artisan optimize:clear`
+
+## 📄 Лицензия
+
+MIT License
