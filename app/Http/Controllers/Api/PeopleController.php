@@ -375,9 +375,15 @@ class PeopleController extends Controller
                 'birth_date' => 'nullable|date',
                 'address' => 'nullable|string|max:500',
                 'status' => 'nullable|string|max:255',
-                'photo' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:2048',
-                'passport_page1' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
-                'passport_page2' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+                'photo' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:204800', // 200MB
+                'passport_page_1' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:204800', // 200MB
+                'passport_page_5' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:204800', // 200MB
+                'certificates_file' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:204800', // 200MB
+                // Добавляем поддержку URL файлов
+                'photo_url' => 'nullable|url',
+                'passport_page_1_url' => 'nullable|url',
+                'passport_page_5_url' => 'nullable|url',
+                'certificates_file_url' => 'nullable|url',
             ]);
 
             if ($validator->fails()) {
@@ -393,19 +399,81 @@ class PeopleController extends Controller
                 'birth_date', 'address', 'status'
             ]));
 
-            // Обработка файлов
-            $fileFields = ['photo', 'passport_page1', 'passport_page2'];
+            // Обработка файлов (загруженных через форму)
+            $fileFields = ['photo', 'passport_page_1', 'passport_page_5', 'certificates_file'];
             foreach ($fileFields as $field) {
                 if ($request->hasFile($field)) {
                     // Удаляем старый файл
-                    if ($person->$field && Storage::disk('public')->exists($person->$field)) {
-                        Storage::disk('public')->delete($person->$field);
+                    if ($person->$field && file_exists(storage_path('app/public/' . $this->getUploadPath($field) . '/' . $person->$field))) {
+                        unlink(storage_path('app/public/' . $this->getUploadPath($field) . '/' . $person->$field));
                     }
-
+                    
                     $file = $request->file($field);
-                    $fileName = time() . '_' . $field . '.' . $file->getClientOriginalExtension();
-                    $filePath = $file->storeAs('uploads/people', $fileName, 'public');
-                    $personUpdateData[$field] = $filePath;
+                    
+                    // Создаем директорию, если её нет
+                    $uploadPath = storage_path('app/public/' . $this->getUploadPath($field));
+                    if (!file_exists($uploadPath)) {
+                        mkdir($uploadPath, 0755, true);
+                    }
+                    
+                    // Генерируем уникальное имя файла
+                    $filename = time() . '_' . $field . '.' . $file->getClientOriginalExtension();
+                    $filePath = $this->getUploadPath($field) . '/' . $filename;
+                    $fullPath = storage_path('app/public/' . $filePath);
+                    
+                    // Перемещаем файл
+                    $file->move(dirname($fullPath), basename($fullPath));
+                    
+                    $personUpdateData[$field] = $filename;
+                    $personUpdateData[$field . '_original_name'] = $file->getClientOriginalName();
+                    $personUpdateData[$field . '_mime_type'] = $file->getMimeType();
+                    $personUpdateData[$field . '_size'] = filesize($fullPath);
+                    
+                    Log::info("File uploaded: $field", ['filename' => $filename, 'path' => $filePath]);
+                }
+            }
+
+            // Обработка файлов по URL
+            $urlFields = ['photo_url', 'passport_page_1_url', 'passport_page_5_url', 'certificates_file_url'];
+            foreach ($urlFields as $urlField) {
+                $field = str_replace('_url', '', $urlField);
+                if (!empty($data[$urlField])) {
+                    $url = $data[$urlField];
+                    
+                    try {
+                        // Удаляем старый файл
+                        if ($person->$field && file_exists(storage_path('app/public/' . $this->getUploadPath($field) . '/' . $person->$field))) {
+                            unlink(storage_path('app/public/' . $this->getUploadPath($field) . '/' . $person->$field));
+                        }
+                        
+                        // Создаем директорию, если её нет
+                        $uploadPath = storage_path('app/public/' . $this->getUploadPath($field));
+                        if (!file_exists($uploadPath)) {
+                            mkdir($uploadPath, 0755, true);
+                        }
+                        
+                        // Генерируем уникальное имя файла
+                        $filename = time() . '_' . $field . '_' . basename($url);
+                        $filePath = $this->getUploadPath($field) . '/' . $filename;
+                        $fullPath = storage_path('app/public/' . $filePath);
+                        
+                        // Загружаем файл по URL
+                        $fileContent = file_get_contents($url);
+                        if ($fileContent !== false) {
+                            file_put_contents($fullPath, $fileContent);
+                            
+                            $personUpdateData[$field] = $filename;
+                            $personUpdateData[$field . '_original_name'] = basename($url);
+                            $personUpdateData[$field . '_mime_type'] = $this->getMimeType($url);
+                            $personUpdateData[$field . '_size'] = filesize($fullPath);
+                            
+                            Log::info("File downloaded from URL: $field", ['url' => $url, 'filename' => $filename, 'path' => $filePath]);
+                        } else {
+                            Log::warning("Failed to download file from URL: $url");
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("Error downloading file from URL $url: " . $e->getMessage());
+                    }
                 }
             }
 
