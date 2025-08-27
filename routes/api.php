@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PeopleController;
 use App\Http\Controllers\Api\CertificateController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\PeopleCertificateController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,6 +39,13 @@ Route::prefix('certificates')->group(function () {
     Route::get('/{id}', [CertificateController::class, 'show']);
     Route::put('/{id}', [CertificateController::class, 'update']);
     Route::delete('/{id}', [CertificateController::class, 'destroy']);
+});
+
+// People Certificates API Routes
+Route::prefix('people-certificates')->group(function () {
+    Route::post('/', [PeopleCertificateController::class, 'store']);
+    Route::put('/{id}', [PeopleCertificateController::class, 'update']);
+    Route::delete('/{id}', [PeopleCertificateController::class, 'destroy']);
 });
 
 // Reports API Routes

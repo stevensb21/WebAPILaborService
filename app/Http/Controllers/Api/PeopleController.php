@@ -466,4 +466,37 @@ class PeopleController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Получить путь для загрузки файла
+     */
+    private function getUploadPath($field)
+    {
+        $paths = [
+            'photo' => 'photos',
+            'passport_page_1' => 'passports',
+            'passport_page_5' => 'passports',
+            'certificates_file' => 'certificates'
+        ];
+        
+        return $paths[$field] ?? 'uploads/people';
+    }
+
+    /**
+     * Получить MIME тип файла по URL
+     */
+    private function getMimeType($url)
+    {
+        $extension = strtolower(pathinfo($url, PATHINFO_EXTENSION));
+        
+        $mimeTypes = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'pdf' => 'application/pdf'
+        ];
+        
+        return $mimeTypes[$extension] ?? 'application/octet-stream';
+    }
 }
