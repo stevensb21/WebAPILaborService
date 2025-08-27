@@ -867,6 +867,9 @@
              
                               fetch(`/safety/update-certificate/${peopleId}/${certificateId}`, {
                      method: 'POST',
+                     headers: {
+                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                     },
                      body: formData
                  })
              .then(response => {
@@ -979,9 +982,7 @@
             };
             
             if (expiryYears && expiryYears > 0) {
-                const futureDate = new Date();
-                futureDate.setFullYear(futureDate.getFullYear() + parseInt(expiryYears));
-                requestData.expiry_date = futureDate.toISOString().split('T')[0];
+                requestData.expiry_date = parseInt(expiryYears);
             }
             
             fetch('/safety/store-certificate', {

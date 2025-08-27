@@ -313,20 +313,27 @@ class SafetyController extends Controller
             $request->validate([
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string|max:500',
-                'expiry_date' => 'nullable|date',
+                'expiry_date' => 'nullable|integer|min:1|max:10',
             ]);
 
-            $data = $request->only(['name', 'description', 'expiry_date']);
+            $data = $request->only(['name', 'description']);
             
-            // Если expiry_date передается как timestamp, конвертируем в дату
-            if (isset($data['expiry_date']) && is_numeric($data['expiry_date'])) {
-                $data['expiry_date'] = date('Y-m-d', $data['expiry_date'] / 1000);
+            // Обработка expiry_date
+            if ($request->has('expiry_date') && $request->expiry_date !== null && $request->expiry_date !== '') {
+                $data['expiry_date'] = (int) $request->expiry_date;
             }
 
             $certificate = Certificate::create($data);
 
             return response()->json(['success' => true, 'certificate' => $certificate]);
         } catch (\Exception $e) {
+            \Log::error('StoreCertificate exception:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
+            ]);
             return response()->json([
                 'success' => false, 
                 'message' => 'Ошибка при создании сертификата: ' . $e->getMessage()
@@ -458,9 +465,9 @@ class SafetyController extends Controller
                 'birth_date' => 'nullable|date',
                 'address' => 'nullable|string|max:500',
                 'status' => 'nullable|string|max:255',
-                'photo' => 'nullable|file|max:2048',
-                'passport_page_1' => 'nullable|file|max:5120',
-                'passport_page_5' => 'nullable|file|max:5120',
+                'photo' => 'nullable|file|max:20480', // Увеличиваем до 20MB
+                'passport_page_1' => 'nullable|file|max:51200', // Увеличиваем до 50MB
+                'passport_page_5' => 'nullable|file|max:51200', // Увеличиваем до 50MB
                 'certificates_file' => 'nullable|file|max:204800', // Максимум 200MB
             ]);
 
@@ -496,6 +503,12 @@ class SafetyController extends Controller
                 $mimeType = $photo->getClientMimeType();
                 $fileSize = $photo->getSize();
                 
+                // Создаем директорию, если её нет
+                $uploadPath = storage_path('app/public/photos');
+                if (!file_exists($uploadPath)) {
+                    mkdir($uploadPath, 0755, true);
+                }
+                
                 // Сохраняем файл напрямую без использования storeAs
                 $photoPath = 'photos/' . $photoName;
                 $fullPath = storage_path('app/public/' . $photoPath);
@@ -520,6 +533,12 @@ class SafetyController extends Controller
                 $passport1 = $request->file('passport_page_1');
                 $passport1Name = time() . '_passport1_' . $passport1->getClientOriginalName();
                 
+                // Создаем директорию, если её нет
+                $uploadPath = storage_path('app/public/passports');
+                if (!file_exists($uploadPath)) {
+                    mkdir($uploadPath, 0755, true);
+                }
+                
                 // Сохраняем файл напрямую без использования storeAs
                 $passport1Path = 'passports/' . $passport1Name;
                 $fullPath = storage_path('app/public/' . $passport1Path);
@@ -540,6 +559,12 @@ class SafetyController extends Controller
                 
                 $passport5 = $request->file('passport_page_5');
                 $passport5Name = time() . '_passport5_' . $passport5->getClientOriginalName();
+                
+                // Создаем директорию, если её нет
+                $uploadPath = storage_path('app/public/passports');
+                if (!file_exists($uploadPath)) {
+                    mkdir($uploadPath, 0755, true);
+                }
                 
                 // Сохраняем файл напрямую без использования storeAs
                 $passport5Path = 'passports/' . $passport5Name;
