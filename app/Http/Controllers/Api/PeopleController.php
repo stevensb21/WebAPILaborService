@@ -161,6 +161,7 @@ class PeopleController extends Controller
                 'certificates_file_url' => $data['certificates_file_url'] ?? 'NOT_SET'
             ]);
             
+            // Кастомная валидация для полей файлов (может быть файл или строка с @)
             $validator = Validator::make($data, [
                 'full_name' => 'required|string|max:255',
                 'position' => 'required|string|max:255',
@@ -170,16 +171,34 @@ class PeopleController extends Controller
                 'birth_date' => 'nullable|date',
                 'address' => 'nullable|string|max:500',
                 'status' => 'nullable|string|max:255',
-                'photo' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:204800', // 200MB или строка с @
-                'passport_page_1' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:204800', // 200MB или строка с @
-                'passport_page_5' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:204800', // 200MB или строка с @
-                'certificates_file' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:204800', // 200MB или строка с @
                 // Добавляем поддержку URL файлов (для обратной совместимости)
                 'photo_url' => 'nullable|url',
                 'passport_page_1_url' => 'nullable|url',
                 'passport_page_5_url' => 'nullable|url',
                 'certificates_file_url' => 'nullable|url',
             ]);
+
+            // Добавляем кастомные правила для полей файлов
+            $fileFields = ['photo', 'passport_page_1', 'passport_page_5', 'certificates_file'];
+            foreach ($fileFields as $field) {
+                if (isset($data[$field])) {
+                    if ($request->hasFile($field)) {
+                        // Это файл - добавляем валидацию файла
+                        $validator->addRules([$field => 'file|mimes:jpeg,png,jpg,gif,pdf|max:204800']);
+                    } elseif (is_string($data[$field]) && strpos($data[$field], '@') === 0) {
+                        // Это строка с @ - проверяем, что после @ идет валидный URL
+                        $url = substr($data[$field], 1);
+                        if (!filter_var($url, FILTER_VALIDATE_URL)) {
+                            $validator->addRules([$field => 'required']);
+                            $validator->addErrors([$field => ['The URL after @ is not valid.']]);
+                        }
+                    } else {
+                        // Неизвестный формат
+                        $validator->addRules([$field => 'required']);
+                        $validator->addErrors([$field => ['The field must be a file or a string starting with @ followed by a valid URL.']]);
+                    }
+                }
+            }
 
             if ($validator->fails()) {
                 return response()->json([
