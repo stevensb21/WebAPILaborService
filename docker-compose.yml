@@ -19,7 +19,7 @@ services:
       - APP_DEBUG=true
       - APP_URL=http://localhost:8081
     networks:
-      - laravel-network
+      - tetrakomnet
     depends_on:
       - laravel-db
 
@@ -36,7 +36,7 @@ services:
     ports:
       - "5432:5432"
     networks:
-      - laravel-network
+      - tetrakomnet
 
   laravel-nginx:
     image: nginx:alpine
@@ -51,11 +51,11 @@ services:
     depends_on:
       - laravel-app
     networks:
-      - laravel-network
+      - tetrakomnet
 
 networks:
   laravel-network:
-    driver: bridge
+    external: true
 
 volumes:
   postgres_data:
