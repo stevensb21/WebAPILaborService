@@ -59,7 +59,7 @@ class PeopleController extends Controller
             $compactPeople = $people->map(function ($person) use ($allCertificates) {
                 $assignedCertificateIds = $person->certificates->pluck('id')->toArray();
                 
-                // Формируем только необходимые поля сертификатов (убраны неиспользуемые поля)
+                // Формируем только необходимые поля сертификатов
                 $allCertificatesWithStatus = $allCertificates->map(function ($certificate) use ($assignedCertificateIds, $person) {
                     $isAssigned = in_array($certificate->id, $assignedCertificateIds);
                     $assignedData = null;
@@ -99,7 +99,10 @@ class PeopleController extends Controller
                 'search_applied' => $request->filled('search')
             ]);
 
-            return response()->json($compactPeople);
+            return response()->json([
+                'success' => true,
+                'data' => $compactPeople
+            ]);
 
         } catch (\Exception $e) {
             Log::error('API People compact error: ' . $e->getMessage());
