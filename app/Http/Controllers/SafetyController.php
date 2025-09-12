@@ -34,24 +34,28 @@ class SafetyController extends Controller
                 $q->withPivot('assigned_date', 'certificate_number', 'status', 'notes', 'certificate_file', 'certificate_file_original_name', 'certificate_file_mime_type', 'certificate_file_size');
             }]);
             
-            // Фильтр по ФИО
+            // Фильтр по ФИО (нечувствительный к регистру)
             if ($request->filled('search_fio')) {
-                $query->whereRaw('LOWER(full_name) LIKE ?', ['%' . strtolower($request->search_fio) . '%']);
+                $searchTerm = trim($request->search_fio);
+                $query->whereRaw('LOWER(TRIM(full_name)) LIKE LOWER(?)', ['%' . $searchTerm . '%']);
             }
             
-            // Фильтр по должности
+            // Фильтр по должности (нечувствительный к регистру)
             if ($request->filled('search_position')) {
-                $query->whereRaw('LOWER(position) LIKE ?', ['%' . strtolower($request->search_position) . '%']);
+                $searchTerm = trim($request->search_position);
+                $query->whereRaw('LOWER(TRIM(position)) LIKE LOWER(?)', ['%' . $searchTerm . '%']);
             }
             
-            // Фильтр по телефону
+            // Фильтр по телефону (нечувствительный к регистру)
             if ($request->filled('search_phone')) {
-                $query->whereRaw('LOWER(phone) LIKE ?', ['%' . strtolower($request->search_phone) . '%']);
+                $searchTerm = trim($request->search_phone);
+                $query->whereRaw('LOWER(TRIM(phone)) LIKE LOWER(?)', ['%' . $searchTerm . '%']);
             }
             
-            // Фильтр по статусу работника
+            // Фильтр по статусу работника (нечувствительный к регистру)
             if ($request->filled('search_status')) {
-                $query->whereRaw('LOWER(status) LIKE ?', ['%' . strtolower($request->search_status) . '%']);
+                $searchTerm = trim($request->search_status);
+                $query->whereRaw('LOWER(TRIM(status)) LIKE LOWER(?)', ['%' . $searchTerm . '%']);
             }
             
             // Фильтр по статусу сертификата (без указания конкретного сертификата)
@@ -86,7 +90,7 @@ class SafetyController extends Controller
                 }
             }
             
-            $people = $query->paginate(20);
+            $people = $query->get();
             $certificates = Certificate::all();
             $positions = People::distinct()->pluck('position')->filter();
             
@@ -203,7 +207,23 @@ class SafetyController extends Controller
                 $peopleCertificate->update($data);
             }
 
-            return response()->json(['success' => true, 'message' => 'Сертификат успешно обновлен']);
+            // Загружаем обновленные данные
+            $peopleCertificate = $peopleCertificate->fresh(['certificate']);
+            
+            return response()->json([
+                'success' => true, 
+                'message' => 'Сертификат успешно обновлен',
+                'data' => [
+                    'people_id' => $peopleId,
+                    'certificate_id' => $certificateId,
+                    'assigned_date' => $peopleCertificate->assigned_date,
+                    'certificate_number' => $peopleCertificate->certificate_number,
+                    'notes' => $peopleCertificate->notes,
+                    'status' => $peopleCertificate->status,
+                    'certificate_file' => $peopleCertificate->certificate_file,
+                    'expiry_date' => $peopleCertificate->certificate->expiry_date
+                ]
+            ]);
         } catch (\Exception $e) {
             \Log::error('UpdateCertificate exception:', [
                 'message' => $e->getMessage(),
@@ -623,7 +643,28 @@ class SafetyController extends Controller
             \Log::info('Updating person with data:', $data);
             $person->update($data);
 
-            return response()->json(['success' => true, 'person' => $person]);
+            // Загружаем обновленные данные
+            $person = $person->fresh();
+            
+            return response()->json([
+                'success' => true, 
+                'message' => 'Человек успешно обновлен',
+                'data' => [
+                    'id' => $person->id,
+                    'full_name' => $person->full_name,
+                    'position' => $person->position,
+                    'phone' => $person->phone,
+                    'snils' => $person->snils,
+                    'inn' => $person->inn,
+                    'birth_date' => $person->birth_date,
+                    'address' => $person->address,
+                    'status' => $person->status,
+                    'photo' => $person->photo,
+                    'passport_page_1' => $person->passport_page_1,
+                    'passport_page_5' => $person->passport_page_5,
+                    'certificates_file' => $person->certificates_file
+                ]
+            ]);
         } catch (\Exception $e) {
             \Log::error('UpdatePerson exception:', [
                 'message' => $e->getMessage(),

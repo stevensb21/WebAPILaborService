@@ -9,15 +9,25 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        .table-container { overflow-x: auto; }
+        .table-container { 
+            overflow-x: auto; 
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #212529 !important;
+        }
         .status-1 { background-color: #d4edda; }
         .status-2 { background-color: #f8d7da; }
         .status-3 { background-color: #fff3cd; }
         .status-4 { background-color: #e2e3e5; }
-                          .certificate-cell { min-width: 150px; text-align: center; vertical-align: top; }
-         .filter-section { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-         .btn-edit { font-size: 0.8rem; padding: 2px 6px; }
-         .table td, .table th { vertical-align: top; }
+        .certificate-cell { min-width: 150px; text-align: center; vertical-align: top; }
+        .filter-section { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .btn-edit { font-size: 0.8rem; padding: 2px 6px; }
+        .table td, .table th { vertical-align: top; }
     </style>
 </head>
 <body>
@@ -100,6 +110,7 @@
                     <table class="table table-bordered table-hover">
                         <thead class="table-dark">
                             <tr>
+                                <th style="width: 50px;">№</th>
                                 <th>ФИО</th>
                                 <th>Должность</th>
                                 <th>Телефон</th>
@@ -148,8 +159,9 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($people as $person)
-                                <tr>
+                            @forelse($people as $index => $person)
+                                <tr data-person-id="{{ $person->id }}">
+                                    <td class="text-center fw-bold">{{ $index + 1 }}</td>
                                                                          <td>
                                          <div class="d-flex align-items-center">
                                              @if($person->photo)
@@ -232,7 +244,7 @@
                                             $personCertificate = $person->certificates->where('id', $certificate->id)->first();
                                             $pivot = $personCertificate ? $personCertificate->pivot : null;
                                         @endphp
-                                        <td class="certificate-cell status-{{ $pivot ? $pivot->status : '4' }}">
+                                        <td class="certificate-cell status-{{ $pivot ? $pivot->status : '4' }}" data-certificate-id="{{ $certificate->id }}">
                                             @if($pivot)
                                                 <div class="mb-1">
                                                     @php
@@ -310,7 +322,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ 7 + $certificates->count() }}" class="text-center text-muted">
+                                    <td colspan="{{ 8 + $certificates->count() }}" class="text-center text-muted">
                                         <i class="fas fa-info-circle"></i> Данные не найдены
                                     </td>
                                 </tr>
@@ -319,10 +331,6 @@
                     </table>
                 </div>
 
-                <!-- Пагинация -->
-                <div class="d-flex justify-content-center mt-4">
-                    {{ $people->appends(request()->query())->links() }}
-                </div>
             </div>
         </div>
     </div>
@@ -880,7 +888,10 @@
              })
              .then(data => {
                  if (data.success) {
-                     location.reload();
+                     // Обновляем только нужную ячейку сертификата
+                     updateCertificateCell(peopleId, certificateId, data.data);
+                     // Закрываем модальное окно
+                     bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
                  } else {
                      alert(data.message || 'Произошла ошибка при сохранении сертификата');
                  }
@@ -920,7 +931,10 @@
              })
              .then(data => {
                  if (data.success) {
-                     location.reload();
+                     // Обновляем только нужную строку человека
+                     updatePersonRow(personId, data.data);
+                     // Закрываем модальное окно
+                     bootstrap.Modal.getInstance(document.getElementById('editPersonModal')).hide();
                  } else {
                      let errorMessage = data.message || 'Произошла ошибка при обновлении человека';
                      if (data.errors) {
@@ -1069,18 +1083,18 @@
                  });
              }
              
-             // Автоматическое обновление формы при изменении фильтров
-             const filterForm = document.querySelector('.filter-section form');
-             const filterInputs = filterForm.querySelectorAll('select, input[type="text"]');
+            // Автоматическое обновление формы при изменении фильтров (исключаем search_fio)
+            const filterForm = document.querySelector('.filter-section form');
+            const filterInputs = filterForm.querySelectorAll('select, input[type="text"]:not(#search_fio)');
+            
+            filterInputs.forEach(input => {
+                input.addEventListener('change', function() {
+                    filterForm.submit();
+                });
+            });
              
-             filterInputs.forEach(input => {
-                 input.addEventListener('change', function() {
-                     filterForm.submit();
-                 });
-             });
-             
-             // Для полей поиска добавляем задержку
-             const searchInputs = ['search_fio', 'search_position', 'search_phone', 'search_status'];
+            // Для полей поиска добавляем задержку (исключаем search_fio - поиск только по кнопке)
+            const searchInputs = ['search_position', 'search_phone', 'search_status'];
              searchInputs.forEach(inputId => {
                  const input = document.getElementById(inputId);
                  if (input) {
@@ -1094,6 +1108,119 @@
                  }
              });
          });
+
+         // Функция для обновления ячейки сертификата
+         function updateCertificateCell(peopleId, certificateId, data) {
+             // Находим строку человека
+             const personRow = document.querySelector(`tr[data-person-id="${peopleId}"]`);
+             if (!personRow) return;
+             
+             // Находим ячейку сертификата
+             const certificateCell = personRow.querySelector(`td[data-certificate-id="${certificateId}"]`);
+             if (!certificateCell) return;
+             
+             // Обновляем содержимое ячейки
+             const assignedDate = new Date(data.assigned_date);
+             const expiryDate = new Date(assignedDate);
+             expiryDate.setFullYear(expiryDate.getFullYear() + (data.expiry_date || 1));
+             
+             const isExpired = expiryDate < new Date();
+             const isExpiringSoon = !isExpired && (expiryDate - new Date()) <= (60 * 24 * 60 * 60 * 1000);
+             
+             let statusClass, statusText;
+             if (isExpired) {
+                 statusClass = 'danger';
+                 statusText = 'Просрочен';
+             } else if (isExpiringSoon) {
+                 statusClass = 'warning';
+                 statusText = 'Скоро просрочится';
+             } else {
+                 statusClass = 'success';
+                 statusText = 'Действует';
+             }
+             
+             certificateCell.className = `certificate-cell status-${isExpired ? '2' : (isExpiringSoon ? '3' : '4')}`;
+             certificateCell.innerHTML = `
+                 <div class="mb-1">
+                     <span class="badge bg-${statusClass}">${statusText}</span>
+                 </div>
+                 <div class="small">
+                     <div>Выдан: ${assignedDate.toLocaleDateString('ru-RU')}</div>
+                     <div>Номер: ${data.certificate_number || 'Н/Д'}</div>
+                     <div class="${isExpired ? 'text-danger' : 'text-success'}">
+                         <i class="fas fa-calendar-alt"></i> 
+                         Действует до: ${expiryDate.toLocaleDateString('ru-RU')}
+                         ${isExpired ? '<i class="fas fa-exclamation-triangle text-danger"></i>' : ''}
+                     </div>
+                 </div>
+                 ${data.notes ? `<div class="small text-muted" title="${data.notes}"><i class="fas fa-sticky-note"></i> ${data.notes.length > 20 ? data.notes.substring(0, 20) + '...' : data.notes}</div>` : ''}
+                 ${data.certificate_file ? `
+                     <div class="small">
+                         <a href="/safety/certificate-view/${peopleId}/${certificateId}" class="btn btn-sm btn-outline-info me-1" title="Просмотреть файл сертификата" target="_blank">
+                             <i class="fas fa-eye"></i> Просмотр
+                         </a>
+                         <a href="/safety/certificate-file/${peopleId}/${certificateId}" class="text-decoration-none text-primary" title="Скачать файл сертификата">
+                             <i class="fas fa-download"></i> 
+                         </a>
+                     </div>
+                 ` : ''}
+                 <button class="btn btn-sm btn-outline-primary btn-edit mt-1" onclick="editCertificate(${peopleId}, ${certificateId}, '${data.assigned_date}', '${data.certificate_number || ''}', '${data.notes || ''}')">
+                     <i class="fas fa-edit"></i>
+                 </button>
+             `;
+         }
+
+         // Функция для обновления строки человека
+         function updatePersonRow(personId, data) {
+             // Находим строку человека
+             const personRow = document.querySelector(`tr[data-person-id="${personId}"]`);
+             if (!personRow) return;
+             
+             // Обновляем ячейку с ФИО
+             const nameCell = personRow.cells[1]; // Вторая колонка (после номера)
+             if (nameCell) {
+                 const birthDate = data.birth_date ? new Date(data.birth_date).toLocaleDateString('ru-RU') : '-';
+                 nameCell.innerHTML = `
+                     <div class="d-flex align-items-center">
+                         ${data.photo ? `
+                             <img src="/safety/photo/${data.photo.split('/').pop()}" alt="Фото ${data.full_name}" class="rounded-circle me-2" style="width: 60px; height: 60px; object-fit: cover; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#photoModal" data-photo-url="/safety/photo/${data.photo.split('/').pop()}" data-person-name="${data.full_name}">
+                         ` : `
+                             <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                                 <i class="fas fa-user text-white" style="font-size: 24px;"></i>
+                             </div>
+                         `}
+                         <div>
+                             <strong>${data.full_name}</strong>
+                             <div class="small text-muted">
+                                 ${data.photo ? '<i class="fas fa-image"></i> Фото загружено<br>' : ''}
+                                 ${data.passport_page_1 || data.passport_page_5 ? '<i class="fas fa-id-card"></i> Паспорт: ' : ''}
+                                 ${data.passport_page_1 ? `<a href="/safety/passport/${data.passport_page_1.split('/').pop()}" class="text-decoration-none" title="Скачать 1 страницу паспорта"><i class="fas fa-download"></i> 1 стр</a>` : ''}
+                                 ${data.passport_page_1 && data.passport_page_5 ? ' | ' : ''}
+                                 ${data.passport_page_5 ? `<a href="/safety/passport/${data.passport_page_5.split('/').pop()}" class="text-decoration-none" title="Скачать 5 страницу паспорта"><i class="fas fa-download"></i> 5 стр</a>` : ''}
+                                 ${data.certificates_file ? `<br><i class="fas fa-certificate"></i> <a href="/safety/certificates-file/${data.certificates_file.split('/').pop()}" class="text-decoration-none" title="Скачать файл со всеми удостоверениями"><i class="fas fa-file-pdf text-danger"></i> Все удостоверения</a>` : ''}
+                             </div>
+                             <div class="mt-1">
+                                 <button class="btn btn-sm btn-outline-warning me-1" onclick="showEditPersonModal(${data.id}, '${data.full_name}', '${data.position || ''}', '${data.phone || ''}', '${data.snils || ''}', '${data.inn || ''}', '${data.birth_date || ''}', '${data.address || ''}', '${data.status || ''}')">
+                                     <i class="fas fa-edit"></i> Редактировать
+                                 </button>
+                                 <button class="btn btn-sm btn-outline-danger" onclick="deletePerson(${data.id}, '${data.full_name}')">
+                                     <i class="fas fa-trash"></i> Удалить
+                                 </button>
+                             </div>
+                         </div>
+                     </div>
+                 `;
+             }
+             
+             // Обновляем остальные ячейки
+             if (personRow.cells[2]) personRow.cells[2].textContent = data.position || '';
+             if (personRow.cells[3]) personRow.cells[3].textContent = data.phone || '';
+             if (personRow.cells[4]) personRow.cells[4].textContent = data.snils || '';
+             if (personRow.cells[5]) personRow.cells[5].textContent = data.inn || '';
+             if (personRow.cells[6]) personRow.cells[6].textContent = data.birth_date ? new Date(data.birth_date).toLocaleDateString('ru-RU') : '-';
+             if (personRow.cells[7]) personRow.cells[7].innerHTML = data.address ? (data.address.length > 30 ? data.address.substring(0, 30) + '...' : data.address) : '';
+             if (personRow.cells[8]) personRow.cells[8].innerHTML = data.status ? `<span class="badge bg-primary">${data.status}</span>` : '<span class="text-muted">-</span>';
+         }
      </script>
  </body>
 </html>
