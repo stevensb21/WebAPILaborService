@@ -24,6 +24,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 // People API Routes
 Route::prefix('people')->group(function () {
+    Route::get('/compact', [PeopleController::class, 'compact']); // Компактное API для бота
     Route::get('/', [PeopleController::class, 'index']);
     Route::post('/', [PeopleController::class, 'store']);
     Route::post('/bulk', [PeopleController::class, 'storeBulk']);

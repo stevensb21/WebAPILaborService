@@ -12,6 +12,106 @@ use Illuminate\Support\Facades\Log;
 class PeopleController extends Controller
 {
     /**
+     * Display a compact listing of people for bot usage.
+     */
+    public function compact(Request $request)
+    {
+        try {
+            Log::info('API People compact called', ['request' => $request->all()]);
+            
+            $query = People::query();
+
+            // Фильтры
+            if ($request->filled('search')) {
+                $search = $request->search;
+                Log::info('Search filter applied', ['search' => $search]);
+                
+                $query->where(function($q) use ($search) {
+                    $q->where('full_name', 'ILIKE', '%' . $search . '%')
+                      ->orWhere('position', 'ILIKE', '%' . $search . '%')
+                      ->orWhere('phone', 'ILIKE', '%' . $search . '%')
+                      ->orWhere('snils', 'ILIKE', '%' . $search . '%')
+                      ->orWhere('inn', 'ILIKE', '%' . $search . '%')
+                      ->orWhere('address', 'ILIKE', '%' . $search . '%')
+                      ->orWhere('status', 'ILIKE', '%' . $search . '%');
+                });
+            }
+
+            if ($request->filled('position')) {
+                $query->where('position', 'ILIKE', '%' . $request->position . '%');
+            }
+
+            if ($request->filled('phone')) {
+                $query->where('phone', 'ILIKE', '%' . $request->phone . '%');
+            }
+
+            if ($request->filled('status')) {
+                $query->where('status', 'ILIKE', '%' . $request->status . '%');
+            }
+
+            // Получаем всех людей без пагинации для бота
+            $people = $query->with('certificates')->get();
+            
+            // Загружаем все сертификаты
+            $allCertificates = \App\Models\Certificate::all();
+            
+            // Формируем компактный ответ
+            $compactPeople = $people->map(function ($person) use ($allCertificates) {
+                $assignedCertificateIds = $person->certificates->pluck('id')->toArray();
+                
+                // Формируем только необходимые поля сертификатов
+                $allCertificatesWithStatus = $allCertificates->map(function ($certificate) use ($assignedCertificateIds, $person) {
+                    $isAssigned = in_array($certificate->id, $assignedCertificateIds);
+                    $assignedData = null;
+                    
+                    if ($isAssigned) {
+                        $pivot = $person->certificates->where('id', $certificate->id)->first()->pivot;
+                        $assignedData = [
+                            'assigned_date' => $pivot->assigned_date,
+                            'status' => $pivot->status
+                        ];
+                    }
+                    
+                    return [
+                        'id' => $certificate->id,
+                        'name' => $certificate->name,
+                        'description' => $certificate->description,
+                        'assigned_data' => $assignedData
+                    ];
+                });
+                
+                return [
+                    'id' => $person->id,
+                    'full_name' => $person->full_name,
+                    'phone' => $person->phone,
+                    'snils' => $person->snils,
+                    'inn' => $person->inn,
+                    'position' => $person->position,
+                    'birth_date' => $person->birth_date,
+                    'address' => $person->address,
+                    'photo' => $person->photo,
+                    'all_certificates' => $allCertificatesWithStatus
+                ];
+            });
+            
+            Log::info('API People compact result', [
+                'total' => $compactPeople->count(),
+                'search_applied' => $request->filled('search')
+            ]);
+
+            return response()->json($compactPeople);
+
+        } catch (\Exception $e) {
+            Log::error('API People compact error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при получении компактного списка людей',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
