@@ -42,8 +42,6 @@ services:
     image: nginx:alpine
     container_name: laravel-nginx
     restart: unless-stopped
-    ports:
-      - "8081:80"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - ./public:/var/www/html/public
@@ -54,7 +52,7 @@ services:
       - tetrakomnet
 
 networks:
-  laravel-network:
+  tetrakomnet:
     external: true
 
 volumes:
