@@ -59,7 +59,7 @@ class PeopleController extends Controller
             $compactPeople = $people->map(function ($person) use ($allCertificates) {
                 $assignedCertificateIds = $person->certificates->pluck('id')->toArray();
                 
-                // Формируем только необходимые поля сертификатов
+                // Формируем только необходимые поля сертификатов (убраны неиспользуемые поля)
                 $allCertificatesWithStatus = $allCertificates->map(function ($certificate) use ($assignedCertificateIds, $person) {
                     $isAssigned = in_array($certificate->id, $assignedCertificateIds);
                     $assignedData = null;
