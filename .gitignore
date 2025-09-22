@@ -17,13 +17,3 @@ yarn-error.log
 ssl/
 backup_*.sql
 storage_backup_*.tar.gz
-docker-compose.yml
-nginx.conf
-docker-compose.prod.yml
-nginx.prod.conf
-docker-setup.sh
-deploy.sh
-SERVER_SETUP.md
-README-Docker.md
-docker-compose.yml
-Dockerfile
