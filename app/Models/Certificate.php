@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Certificate extends Model
 {
@@ -22,6 +23,14 @@ class Certificate extends Model
         return $this->belongsToMany(People::class, 'people_certificates')
                     ->withPivot('assigned_date', 'certificate_number', 'status', 'notes')
                     ->withTimestamps();
+    }
+
+    /**
+     * Связь с порядком сертификата
+     */
+    public function order(): HasOne
+    {
+        return $this->hasOne(CertificateOrder::class);
     }
 
  

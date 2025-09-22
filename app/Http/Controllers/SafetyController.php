@@ -29,33 +29,31 @@ class SafetyController extends Controller
                 'request_params' => $request->all()
             ]);
             
-            // Начинаем с базового запроса
-            $query = People::with(['certificates' => function($q) {
-                $q->withPivot('assigned_date', 'certificate_number', 'status', 'notes', 'certificate_file', 'certificate_file_original_name', 'certificate_file_mime_type', 'certificate_file_size');
-            }]);
+            // Начинаем с базового запроса без загрузки сертификатов для оптимизации
+            $query = People::select('id', 'full_name', 'position', 'phone', 'status', 'address', 'created_at', 'updated_at');
             
             // Фильтр по ФИО (нечувствительный к регистру)
             if ($request->filled('search_fio')) {
                 $searchTerm = trim($request->search_fio);
-                $query->whereRaw('LOWER(TRIM(full_name)) LIKE LOWER(?)', ['%' . $searchTerm . '%']);
+                $query->where('full_name', 'LIKE', '%' . $searchTerm . '%');
             }
             
             // Фильтр по должности (нечувствительный к регистру)
             if ($request->filled('search_position')) {
                 $searchTerm = trim($request->search_position);
-                $query->whereRaw('LOWER(TRIM(position)) LIKE LOWER(?)', ['%' . $searchTerm . '%']);
+                $query->where('position', 'LIKE', '%' . $searchTerm . '%');
             }
             
             // Фильтр по телефону (нечувствительный к регистру)
             if ($request->filled('search_phone')) {
                 $searchTerm = trim($request->search_phone);
-                $query->whereRaw('LOWER(TRIM(phone)) LIKE LOWER(?)', ['%' . $searchTerm . '%']);
+                $query->where('phone', 'LIKE', '%' . $searchTerm . '%');
             }
             
             // Фильтр по статусу работника (нечувствительный к регистру)
             if ($request->filled('search_status')) {
                 $searchTerm = trim($request->search_status);
-                $query->whereRaw('LOWER(TRIM(status)) LIKE LOWER(?)', ['%' . $searchTerm . '%']);
+                $query->where('status', 'LIKE', '%' . $searchTerm . '%');
             }
             
             // Фильтр по статусу сертификата (без указания конкретного сертификата)
@@ -90,9 +88,39 @@ class SafetyController extends Controller
                 }
             }
             
-            $people = $query->get();
-            $certificates = Certificate::all();
-            $positions = People::distinct()->pluck('position')->filter();
+            // Создаем ключ кэша на основе параметров запроса
+            $cacheKey = 'people_list_' . md5(serialize($request->all()));
+            
+            // Кэшируем весь результат на 5 минут
+            $people = \Cache::remember($cacheKey, 300, function() use ($query) {
+                $people = $query->get();
+                
+                // Загружаем сертификаты для людей отдельно (только если есть люди)
+                if ($people->count() > 0) {
+                    $people->load(['certificates' => function($q) {
+                        $q->select('certificates.id', 'certificates.name', 'certificates.expiry_date')
+                          ->withPivot('assigned_date', 'certificate_number', 'status', 'notes', 'certificate_file', 'certificate_file_original_name', 'certificate_file_mime_type', 'certificate_file_size');
+                    }]);
+                }
+                
+                return $people;
+            });
+            
+            // Кэшируем сертификаты на 1 час (они редко изменяются)
+            $certificates = \Cache::remember('certificates_list', 3600, function() {
+                return Certificate::select('certificates.id', 'certificates.name', 'certificates.expiry_date')
+                    ->leftJoin('certificate_orders', 'certificates.id', '=', 'certificate_orders.certificate_id')
+                    ->orderBy('certificate_orders.sort_order', 'asc')
+                    ->orderBy('certificates.id', 'asc')
+                    ->get();
+            });
+            
+            // Кэшируем должности на 30 минут
+            $positions = \Cache::remember('positions_list', 1800, function() {
+                return People::whereNotNull('position')
+                    ->distinct()
+                    ->pluck('position');
+            });
             
             \Log::info('Data loaded successfully', [
                 'people_count' => $people->count(),
@@ -121,7 +149,7 @@ class SafetyController extends Controller
     {
         try {
             $validator = \Validator::make($request->all(), [
-                'assigned_date' => 'required|date',
+                'assigned_date' => 'nullable|date',
                 'certificate_number' => 'nullable|string|max:255',
                 'notes' => 'nullable|string|max:500',
                 'certificate_file' => 'nullable|file|max:204800', // 200MB
@@ -141,22 +169,28 @@ class SafetyController extends Controller
 
             // Автоматически определяем статус на основе срока действия
             $certificate = Certificate::find($certificateId);
-            $assignedDate = \Carbon\Carbon::parse($request->assigned_date);
-            $expiryDate = $assignedDate->copy()->addYears($certificate->expiry_date ?: 1);
-            $isExpired = $expiryDate->isPast();
-            $isExpiringSoon = now()->diffInDays($expiryDate, false) <= 60 && now()->diffInDays($expiryDate, false) > 0; // 2 месяца = 60 дней, но только если дата в будущем
             
-            if ($isExpired) {
-                $status = 2; // Просрочен
-            } elseif ($isExpiringSoon) {
-                $status = 3; // Скоро просрочится
+            // Если дата не указана, устанавливаем статус "Отсутствует"
+            if (empty($request->assigned_date)) {
+                $status = 1; // Отсутствует
             } else {
-                $status = 4; // Действует
+                $assignedDate = \Carbon\Carbon::parse($request->assigned_date);
+                $expiryDate = $assignedDate->copy()->addYears($certificate->expiry_date ?: 1);
+                $isExpired = $expiryDate->isPast();
+                $isExpiringSoon = now()->diffInDays($expiryDate, false) <= 60 && now()->diffInDays($expiryDate, false) > 0; // 2 месяца = 60 дней, но только если дата в будущем
+                
+                if ($isExpired) {
+                    $status = 2; // Просрочен
+                } elseif ($isExpiringSoon) {
+                    $status = 3; // Скоро просрочится
+                } else {
+                    $status = 4; // Действует
+                }
             }
             
             $data = [
                 'status' => $status,
-                'assigned_date' => $request->assigned_date,
+                'assigned_date' => $request->assigned_date ?: '2000-01-01',
                 'certificate_number' => $request->certificate_number ?: 'Н/Д', // Если пустое, ставим "Н/Д"
                 'notes' => $request->notes,
             ];
@@ -209,6 +243,10 @@ class SafetyController extends Controller
 
             // Загружаем обновленные данные
             $peopleCertificate = $peopleCertificate->fresh(['certificate']);
+            
+            // Очищаем кэш при обновлении сертификата
+            \Cache::forget('certificates_list');
+            \Cache::flush(); // Очищаем весь кэш для обновления списка людей
             
             return response()->json([
                 'success' => true, 
@@ -311,6 +349,10 @@ class SafetyController extends Controller
             }
 
             $person = People::create($data);
+            
+            // Очищаем кэш при добавлении человека
+            \Cache::forget('positions_list');
+            \Cache::flush(); // Очищаем весь кэш для обновления списка людей
 
             return response()->json(['success' => true, 'person' => $person]);
         } catch (\Exception $e) {
@@ -799,6 +841,94 @@ class SafetyController extends Controller
                 'success' => false, 
                 'message' => 'Ошибка при обновлении сертификата: ' . $e->getMessage()
             ], 422);
+        }
+    }
+
+    public function deletePersonCertificate($peopleId, $certificateId)
+    {
+        try {
+            // Находим связь между человеком и сертификатом
+            $peopleCertificate = \App\Models\PeopleCertificate::where('people_id', $peopleId)
+                ->where('certificate_id', $certificateId)
+                ->first();
+
+            if (!$peopleCertificate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Связь между человеком и сертификатом не найдена'
+                ], 404);
+            }
+
+            // Удаляем файл сертификата, если он существует
+            if ($peopleCertificate->certificate_file && file_exists(storage_path('app/public/' . $peopleCertificate->certificate_file))) {
+                unlink(storage_path('app/public/' . $peopleCertificate->certificate_file));
+            }
+
+            // Удаляем связь
+            $peopleCertificate->delete();
+            
+            // Очищаем кэш при удалении сертификата
+            \Cache::flush(); // Очищаем весь кэш для обновления списка людей
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Сертификат успешно удален у человека'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('DeletePersonCertificate exception:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false, 
+                'message' => 'Ошибка при удалении сертификата: ' . $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Показать модальное окно для изменения порядка сертификатов
+     */
+    public function showCertificateOrderModal()
+    {
+        $certificates = Certificate::with('order')->get();
+        return view('safety.certificate-order-modal', compact('certificates'));
+    }
+
+    /**
+     * Обновить порядок сертификатов
+     */
+    public function updateCertificateOrder(Request $request)
+    {
+        try {
+            $certificateIds = $request->input('certificate_ids', []);
+            
+            foreach ($certificateIds as $index => $certificateId) {
+                \App\Models\CertificateOrder::updateOrCreate(
+                    ['certificate_id' => $certificateId],
+                    ['sort_order' => $index + 1]
+                );
+            }
+            
+            // Очищаем кэш
+            \Cache::forget('certificates_list');
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Порядок сертификатов успешно обновлен'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('UpdateCertificateOrder exception:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при обновлении порядка: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

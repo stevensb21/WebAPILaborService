@@ -40,6 +40,9 @@
                         Управление сертификатами по охране труда
                     </h1>
                                          <div>
+                         <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#certificateOrderModal">
+                             <i class="fas fa-sort"></i> Порядок сертификатов
+                         </button>
                          <button class="btn btn-success me-2" onclick="showAddPersonModal()">
                              <i class="fas fa-user-plus"></i> Добавить человека
                          </button>
@@ -117,7 +120,7 @@
                                 <th>СНИЛС</th>
                                 <th>ИНН</th>
                                 <th>Дата рождения</th>
-                                <th>Адрес</th>
+                                <th>Примечание</th>
                                 <th>Статус</th>
                                                                  @foreach($certificates as $certificate)
                                      <th class="certificate-cell">
@@ -230,7 +233,9 @@
                                     <td>{{ $person->snils }}</td>
                                     <td>{{ $person->inn }}</td>
                                     <td>{{ $person->birth_date ? \Carbon\Carbon::parse($person->birth_date)->format('d.m.Y') : '-' }}</td>
-                                    <td>{{ Str::limit($person->address, 30) }}</td>
+                                    <td title="{{ $person->address ?: 'Нет примечания' }}">
+                                        {{ $person->address ? Str::limit($person->address, 30) : '-' }}
+                                    </td>
                                     <td>
                                         @if($person->status)
                                             <span class="badge bg-primary">{{ $person->status }}</span>
@@ -313,10 +318,19 @@
                                                 <span class="badge bg-secondary">Отсутствует</span>
                                             @endif
                                             
-                                            <button class="btn btn-sm btn-outline-primary btn-edit mt-1" 
-                                                    onclick="editCertificate({{ $person->id }}, {{ $certificate->id }}, {{ json_encode($pivot ? ($pivot->assigned_date instanceof \Carbon\Carbon ? $pivot->assigned_date->format('Y-m-d') : \Carbon\Carbon::parse($pivot->assigned_date)->format('Y-m-d')) : '') }}, {{ json_encode($pivot ? $pivot->certificate_number : '') }}, {{ json_encode($pivot ? $pivot->notes : '') }})">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
+                                            <div class="d-flex gap-1 mt-1">
+                                                <button class="btn btn-sm btn-outline-primary btn-edit" 
+                                                        onclick="editCertificate({{ $person->id }}, {{ $certificate->id }}, {{ json_encode($pivot ? ($pivot->assigned_date instanceof \Carbon\Carbon ? $pivot->assigned_date->format('Y-m-d') : \Carbon\Carbon::parse($pivot->assigned_date)->format('Y-m-d')) : '') }}, {{ json_encode($pivot ? $pivot->certificate_number : '') }}, {{ json_encode($pivot ? $pivot->notes : '') }})">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                @if($pivot)
+                                                    <button class="btn btn-sm btn-outline-danger" 
+                                                            onclick="deletePersonCertificate({{ $person->id }}, {{ $certificate->id }}, {{ json_encode($person->full_name) }}, {{ json_encode($certificate->name) }})"
+                                                            title="Удалить сертификат">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                @endif
+                                            </div>
                                         </td>
                                     @endforeach
                                 </tr>
@@ -357,7 +371,7 @@
                         
                         <div class="mb-3">
                             <label for="assigned_date" class="form-label">Дата выдачи</label>
-                            <input type="date" class="form-control" id="assigned_date" name="assigned_date" required>
+                            <input type="date" class="form-control" id="assigned_date" name="assigned_date">
                         </div>
                         
                         <div class="mb-3">
@@ -653,9 +667,13 @@
                  </form>
              </div>
          </div>
-     </div>
+    </div>
 
-     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Модальное окно для изменения порядка сертификатов -->
+    @include('safety.certificate-order-modal')
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script>
                           function showCertificateDescription(certificateId) {
              console.log('Opening certificate description for ID:', certificateId);
@@ -864,6 +882,58 @@
                      alert('Произошла ошибка при удалении сертификата: ' + error.message);
                  });
              }
+         }
+
+         function deletePersonCertificate(personId, certificateId, personName, certificateName) {
+             if (confirm(`Вы уверены, что хотите удалить сертификат "${certificateName}" у человека "${personName}"? Это действие нельзя отменить.`)) {
+                 fetch(`/safety/delete-person-certificate/${personId}/${certificateId}`, {
+                     method: 'DELETE',
+                     headers: {
+                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                     }
+                 })
+                 .then(response => {
+                     if (!response.ok) {
+                         throw new Error(`HTTP error! status: ${response.status}`);
+                     }
+                     return response.json();
+                 })
+                 .then(data => {
+                     if (data.success) {
+                         // Обновляем только нужную ячейку сертификата
+                         updateCertificateCellAfterDelete(personId, certificateId);
+                     } else {
+                         alert(data.message || 'Произошла ошибка при удалении сертификата');
+                     }
+                 })
+                 .catch(error => {
+                     console.error('Error:', error);
+                     alert('Произошла ошибка при удалении сертификата: ' + error.message);
+                 });
+             }
+         }
+
+         // Функция для обновления ячейки сертификата после удаления
+         function updateCertificateCellAfterDelete(personId, certificateId) {
+             // Находим строку человека
+             const personRow = document.querySelector(`tr[data-person-id="${personId}"]`);
+             if (!personRow) return;
+             
+             // Находим ячейку сертификата
+             const certificateCell = personRow.querySelector(`td[data-certificate-id="${certificateId}"]`);
+             if (!certificateCell) return;
+             
+             // Обновляем содержимое ячейки на "Отсутствует"
+             certificateCell.className = 'certificate-cell status-1';
+             certificateCell.innerHTML = `
+                 <span class="badge bg-secondary">Отсутствует</span>
+                 <div class="d-flex gap-1 mt-1">
+                     <button class="btn btn-sm btn-outline-primary btn-edit" 
+                             onclick="editCertificate(${personId}, ${certificateId}, '', '', '')">
+                         <i class="fas fa-edit"></i>
+                     </button>
+                 </div>
+             `;
          }
 
                  document.getElementById('editForm').addEventListener('submit', function(e) {
@@ -1119,6 +1189,21 @@
              const certificateCell = personRow.querySelector(`td[data-certificate-id="${certificateId}"]`);
              if (!certificateCell) return;
              
+             // Если дата не указана или равна 01.01.2000, показываем "Отсутствует"
+             if (!data.assigned_date || data.assigned_date === '2000-01-01') {
+                 certificateCell.className = 'certificate-cell status-1';
+                 certificateCell.innerHTML = `
+                     <span class="badge bg-secondary">Отсутствует</span>
+                     <div class="d-flex gap-1 mt-1">
+                         <button class="btn btn-sm btn-outline-primary btn-edit" 
+                                 onclick="editCertificate(${peopleId}, ${certificateId}, '', '${data.certificate_number || ''}', '${data.notes || ''}')">
+                             <i class="fas fa-edit"></i>
+                         </button>
+                     </div>
+                 `;
+                 return;
+             }
+             
              // Обновляем содержимое ячейки
              const assignedDate = new Date(data.assigned_date);
              const expiryDate = new Date(assignedDate);
@@ -1127,19 +1212,22 @@
              const isExpired = expiryDate < new Date();
              const isExpiringSoon = !isExpired && (expiryDate - new Date()) <= (60 * 24 * 60 * 60 * 1000);
              
-             let statusClass, statusText;
+             let statusClass, statusText, statusNumber;
              if (isExpired) {
                  statusClass = 'danger';
                  statusText = 'Просрочен';
+                 statusNumber = '2';
              } else if (isExpiringSoon) {
                  statusClass = 'warning';
                  statusText = 'Скоро просрочится';
+                 statusNumber = '3';
              } else {
                  statusClass = 'success';
                  statusText = 'Действует';
+                 statusNumber = '4';
              }
              
-             certificateCell.className = `certificate-cell status-${isExpired ? '2' : (isExpiringSoon ? '3' : '4')}`;
+             certificateCell.className = `certificate-cell status-${statusNumber}`;
              certificateCell.innerHTML = `
                  <div class="mb-1">
                      <span class="badge bg-${statusClass}">${statusText}</span>
@@ -1164,9 +1252,17 @@
                          </a>
                      </div>
                  ` : ''}
-                 <button class="btn btn-sm btn-outline-primary btn-edit mt-1" onclick="editCertificate(${peopleId}, ${certificateId}, '${data.assigned_date}', '${data.certificate_number || ''}', '${data.notes || ''}')">
-                     <i class="fas fa-edit"></i>
-                 </button>
+                 <div class="d-flex gap-1 mt-1">
+                     <button class="btn btn-sm btn-outline-primary btn-edit" 
+                             onclick="editCertificate(${peopleId}, ${certificateId}, '${data.assigned_date}', '${data.certificate_number || ''}', '${data.notes || ''}')">
+                         <i class="fas fa-edit"></i>
+                     </button>
+                     <button class="btn btn-sm btn-outline-danger" 
+                             onclick="deletePersonCertificate(${peopleId}, ${certificateId}, '', '')"
+                             title="Удалить сертификат">
+                         <i class="fas fa-trash"></i>
+                     </button>
+                 </div>
              `;
          }
 
@@ -1176,8 +1272,20 @@
              const personRow = document.querySelector(`tr[data-person-id="${personId}"]`);
              if (!personRow) return;
              
+             // Находим ячейки по содержимому заголовков
+             const getCellByHeader = (headerText) => {
+                 const headers = document.querySelectorAll('thead th');
+                 let columnIndex = -1;
+                 headers.forEach((th, index) => {
+                     if (th.textContent.trim() === headerText) {
+                         columnIndex = index;
+                     }
+                 });
+                 return columnIndex >= 0 ? personRow.cells[columnIndex] : null;
+             };
+             
              // Обновляем ячейку с ФИО
-             const nameCell = personRow.cells[1]; // Вторая колонка (после номера)
+             const nameCell = getCellByHeader('ФИО');
              if (nameCell) {
                  const birthDate = data.birth_date ? new Date(data.birth_date).toLocaleDateString('ru-RU') : '-';
                  nameCell.innerHTML = `
@@ -1212,15 +1320,33 @@
                  `;
              }
              
-             // Обновляем остальные ячейки
-             if (personRow.cells[2]) personRow.cells[2].textContent = data.position || '';
-             if (personRow.cells[3]) personRow.cells[3].textContent = data.phone || '';
-             if (personRow.cells[4]) personRow.cells[4].textContent = data.snils || '';
-             if (personRow.cells[5]) personRow.cells[5].textContent = data.inn || '';
-             if (personRow.cells[6]) personRow.cells[6].textContent = data.birth_date ? new Date(data.birth_date).toLocaleDateString('ru-RU') : '-';
-             if (personRow.cells[7]) personRow.cells[7].innerHTML = data.address ? (data.address.length > 30 ? data.address.substring(0, 30) + '...' : data.address) : '';
-             if (personRow.cells[8]) personRow.cells[8].innerHTML = data.status ? `<span class="badge bg-primary">${data.status}</span>` : '<span class="text-muted">-</span>';
+             // Обновляем остальные ячейки по заголовкам
+             const positionCell = getCellByHeader('Должность');
+             if (positionCell) positionCell.textContent = data.position || '';
+             
+             const phoneCell = getCellByHeader('Телефон');
+             if (phoneCell) phoneCell.textContent = data.phone || '';
+             
+             const snilsCell = getCellByHeader('СНИЛС');
+             if (snilsCell) snilsCell.textContent = data.snils || '';
+             
+             const innCell = getCellByHeader('ИНН');
+             if (innCell) innCell.textContent = data.inn || '';
+             
+             const birthDateCell = getCellByHeader('Дата рождения');
+             if (birthDateCell) birthDateCell.textContent = data.birth_date ? new Date(data.birth_date).toLocaleDateString('ru-RU') : '-';
+             
+             const addressCell = getCellByHeader('Примечание');
+             if (addressCell) {
+                 addressCell.title = data.address ? data.address : 'Нет примечания';
+                 addressCell.innerHTML = data.address ? (data.address.length > 30 ? data.address.substring(0, 30) + '...' : data.address) : '-';
+             }
+             
+             const statusCell = getCellByHeader('Статус');
+             if (statusCell) statusCell.innerHTML = data.status ? `<span class="badge bg-primary">${data.status}</span>` : '<span class="text-muted">-</span>';
          }
+
+
      </script>
  </body>
 </html>

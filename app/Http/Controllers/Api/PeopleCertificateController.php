@@ -37,7 +37,7 @@ class PeopleCertificateController extends Controller
             $validator = Validator::make($data, [
                 'people_id' => 'required|integer|exists:people,id',
                 'certificate_id' => 'required|integer|exists:certificates,id',
-                'assigned_date' => 'required|date',
+                'assigned_date' => 'nullable|date',
                 'certificate_number' => 'nullable|string|max:255',
                 'notes' => 'nullable|string|max:500',
                 'certificate_file' => 'nullable|file|max:204800', // 200MB
@@ -71,24 +71,30 @@ class PeopleCertificateController extends Controller
             $certificateData = [
                 'people_id' => $peopleId,
                 'certificate_id' => $certificateId,
-                'assigned_date' => $data['assigned_date'],
+                'assigned_date' => $data['assigned_date'] ?? null,
                 'certificate_number' => $data['certificate_number'] ?? 'Н/Д',
                 'notes' => $data['notes'] ?? null,
             ];
 
             // Автоматически определяем статус на основе срока действия
             $certificate = Certificate::find($certificateId);
-            $assignedDate = \Carbon\Carbon::parse($data['assigned_date']);
-            $expiryDate = $assignedDate->copy()->addYears($certificate->expiry_date ?: 1);
-            $isExpired = $expiryDate->isPast();
-            $isExpiringSoon = now()->diffInDays($expiryDate, false) <= 60 && now()->diffInDays($expiryDate, false) > 0;
             
-            if ($isExpired) {
-                $certificateData['status'] = 2; // Просрочен
-            } elseif ($isExpiringSoon) {
-                $certificateData['status'] = 3; // Скоро просрочится
+            // Если дата не указана, устанавливаем статус "Отсутствует"
+            if (empty($data['assigned_date'])) {
+                $certificateData['status'] = 1; // Отсутствует
             } else {
-                $certificateData['status'] = 4; // Действует
+                $assignedDate = \Carbon\Carbon::parse($data['assigned_date']);
+                $expiryDate = $assignedDate->copy()->addYears($certificate->expiry_date ?: 1);
+                $isExpired = $expiryDate->isPast();
+                $isExpiringSoon = now()->diffInDays($expiryDate, false) <= 60 && now()->diffInDays($expiryDate, false) > 0;
+                
+                if ($isExpired) {
+                    $certificateData['status'] = 2; // Просрочен
+                } elseif ($isExpiringSoon) {
+                    $certificateData['status'] = 3; // Скоро просрочится
+                } else {
+                    $certificateData['status'] = 4; // Действует
+                }
             }
 
             // Обработка файла сертификата (загруженного через форму)

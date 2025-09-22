@@ -21,4 +21,9 @@ Route::get('/safety/certificates-file/{filename}', [SafetyController::class, 'do
 Route::get('/safety/certificate/{id}/description', [SafetyController::class, 'getCertificateDescription'])->name('safety.certificate-description');
 Route::delete('/safety/delete-person/{id}', [SafetyController::class, 'deletePerson'])->name('safety.delete-person');
 Route::delete('/safety/delete-certificate/{id}', [SafetyController::class, 'deleteCertificate'])->name('safety.delete-certificate');
+Route::delete('/safety/delete-person-certificate/{peopleId}/{certificateId}', [SafetyController::class, 'deletePersonCertificate'])->name('safety.delete-person-certificate');
 Route::post('/safety/update-certificate-info/{id}', [SafetyController::class, 'updateCertificateInfo'])->name('safety.update-certificate-info');
+
+// Маршруты для управления порядком сертификатов
+Route::get('/safety/certificate-order-modal', [SafetyController::class, 'showCertificateOrderModal'])->name('safety.certificate-order-modal');
+Route::post('/safety/update-certificate-order', [SafetyController::class, 'updateCertificateOrder'])->name('safety.update-certificate-order');
