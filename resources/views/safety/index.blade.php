@@ -28,6 +28,43 @@
         .filter-section { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
         .btn-edit { font-size: 0.8rem; padding: 2px 6px; }
         .table td, .table th { vertical-align: top; }
+        
+        /* Стили для эффекта увеличения текста в столбце Примечание */
+        .address-cell {
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .address-cell:hover {
+            z-index: 1000;
+            position: relative;
+            background-color: #fff !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border-radius: 4px;
+            padding: 8px;
+            max-width: none;
+            white-space: normal;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .address-cell:hover::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            background-color: #fff;
+            z-index: -1;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -117,7 +154,7 @@
                                 <th>СНИЛС</th>
                                 <th>ИНН</th>
                                 <th>Дата рождения</th>
-                                <th>Адрес</th>
+                                <th>Примечание</th>
                                 <th>Статус</th>
                                                                  @foreach($certificates as $certificate)
                                      <th class="certificate-cell">
@@ -230,7 +267,9 @@
                                     <td>{{ $person->snils }}</td>
                                     <td>{{ $person->inn }}</td>
                                     <td>{{ $person->birth_date ? \Carbon\Carbon::parse($person->birth_date)->format('d.m.Y') : '-' }}</td>
-                                    <td>{{ Str::limit($person->address, 30) }}</td>
+                                    <td class="address-cell" title="{{ $person->address ?: 'Нет примечания' }}">
+                                        {{ $person->address ? Str::limit($person->address, 30) : '-' }}
+                                    </td>
                                     <td>
                                         @if($person->status)
                                             <span class="badge bg-primary">{{ $person->status }}</span>
@@ -1067,6 +1106,8 @@
 
          // Обработка просмотра фотографии
          document.addEventListener('DOMContentLoaded', function() {
+             // Инициализация эффекта увеличения для ячеек примечания
+             initializeAddressCellHover();
              const photoModal = document.getElementById('photoModal');
              if (photoModal) {
                  photoModal.addEventListener('show.bs.modal', function(event) {
@@ -1218,8 +1259,66 @@
              if (personRow.cells[4]) personRow.cells[4].textContent = data.snils || '';
              if (personRow.cells[5]) personRow.cells[5].textContent = data.inn || '';
              if (personRow.cells[6]) personRow.cells[6].textContent = data.birth_date ? new Date(data.birth_date).toLocaleDateString('ru-RU') : '-';
-             if (personRow.cells[7]) personRow.cells[7].innerHTML = data.address ? (data.address.length > 30 ? data.address.substring(0, 30) + '...' : data.address) : '';
+             if (personRow.cells[7]) {
+                 personRow.cells[7].className = 'address-cell';
+                 personRow.cells[7].title = data.address ? data.address : 'Нет примечания';
+                 personRow.cells[7].innerHTML = data.address ? (data.address.length > 30 ? data.address.substring(0, 30) + '...' : data.address) : '-';
+             }
              if (personRow.cells[8]) personRow.cells[8].innerHTML = data.status ? `<span class="badge bg-primary">${data.status}</span>` : '<span class="text-muted">-</span>';
+         }
+
+         // Функция для инициализации эффекта увеличения ячеек примечания
+         function initializeAddressCellHover() {
+             const addressCells = document.querySelectorAll('.address-cell');
+             
+             addressCells.forEach(cell => {
+                 // Добавляем обработчик для показа полного текста при наведении
+                 cell.addEventListener('mouseenter', function() {
+                     if (this.textContent.trim() !== '-' && this.textContent.trim() !== '') {
+                         this.style.cursor = 'pointer';
+                     }
+                 });
+                 
+                 // Добавляем обработчик для клика (показать полный текст в модальном окне)
+                 cell.addEventListener('click', function() {
+                     const fullText = this.getAttribute('title');
+                     if (fullText && fullText !== 'Нет примечания' && fullText.trim() !== '') {
+                         showFullTextModal(fullText);
+                     }
+                 });
+             });
+         }
+
+         // Функция для показа полного текста в модальном окне
+         function showFullTextModal(text) {
+             // Создаем модальное окно если его нет
+             let modal = document.getElementById('fullTextModal');
+             if (!modal) {
+                 modal = document.createElement('div');
+                 modal.id = 'fullTextModal';
+                 modal.className = 'modal fade';
+                 modal.innerHTML = `
+                     <div class="modal-dialog">
+                         <div class="modal-content">
+                             <div class="modal-header">
+                                 <h5 class="modal-title">Полный текст примечания</h5>
+                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                             </div>
+                             <div class="modal-body">
+                                 <p style="white-space: pre-wrap; word-wrap: break-word;">${text}</p>
+                             </div>
+                             <div class="modal-footer">
+                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                             </div>
+                         </div>
+                     </div>
+                 `;
+                 document.body.appendChild(modal);
+             }
+             
+             // Показываем модальное окно
+             const bsModal = new bootstrap.Modal(modal);
+             bsModal.show();
          }
      </script>
  </body>

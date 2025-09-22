@@ -52,7 +52,18 @@ RUN mkdir -p storage/app/public/photos \
 
 # Генерация ключа приложения (если .env не существует)
 RUN if [ ! -f .env ]; then \
-        cp .env.example .env && \
+        echo "APP_NAME=\"WebAPI Labor Service\"" > .env && \
+        echo "APP_ENV=local" >> .env && \
+        echo "APP_KEY=" >> .env && \
+        echo "APP_DEBUG=true" >> .env && \
+        echo "APP_URL=http://localhost:8081" >> .env && \
+        echo "" >> .env && \
+        echo "DB_CONNECTION=pgsql" >> .env && \
+        echo "DB_HOST=laravel-db" >> .env && \
+        echo "DB_PORT=5432" >> .env && \
+        echo "DB_DATABASE=laravel" >> .env && \
+        echo "DB_USERNAME=laravel" >> .env && \
+        echo "DB_PASSWORD=secret" >> .env && \
         php artisan key:generate --no-interaction; \
     fi
 
