@@ -59,10 +59,12 @@
                          <button class="btn btn-success me-2" onclick="showAddPersonModal()">
                              <i class="fas fa-user-plus"></i> Добавить человека
                          </button>
-                         <button class="btn btn-info" onclick="showAddCertificateModal()">
+                         <button class="btn btn-info me-2" onclick="showAddCertificateModal()">
                              <i class="fas fa-certificate"></i> Добавить сертификат
                          </button>
-
+                         <a href="{{ route('api-tokens.index') }}" class="btn btn-outline-warning">
+                             <i class="fas fa-key"></i> API токены
+                         </a>
                      </div>
                 </div>
 

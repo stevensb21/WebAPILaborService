@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SafetyController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ApiTokenController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -34,4 +35,19 @@ Route::post('/safety/update-certificate-info/{id}', [SafetyController::class, 'u
     // Маршруты для управления порядком сертификатов
     Route::get('/safety/certificate-order-modal', [SafetyController::class, 'showCertificateOrderModal'])->name('safety.certificate-order-modal');
     Route::post('/safety/update-certificate-order', [SafetyController::class, 'updateCertificateOrder'])->name('safety.update-certificate-order');
+
+    // Маршруты для управления API токенами
+    Route::resource('api-tokens', ApiTokenController::class);
+    Route::post('/api-tokens/{apiToken}/activate', [ApiTokenController::class, 'activate'])->name('api-tokens.activate');
+    Route::post('/api-tokens/{apiToken}/deactivate', [ApiTokenController::class, 'deactivate'])->name('api-tokens.deactivate');
+    
+    // Документация API
+    Route::get('/api-docs', function() {
+        return view('api-docs');
+    })->name('api-docs');
+    
+    // Примеры использования API
+    Route::get('/api-examples', function() {
+        return view('api-examples');
+    })->name('api-examples');
 });

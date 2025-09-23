@@ -22,6 +22,9 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+// API Routes with token authentication
+Route::middleware(['api.token'])->group(function () {
+    
 // People API Routes
 Route::prefix('people')->group(function () {
     Route::get('/compact', [PeopleController::class, 'compact']); // Компактное API для бота
@@ -55,3 +58,5 @@ Route::prefix('reports')->group(function () {
     Route::get('/expiring-soon', [ReportController::class, 'expiringSoon']);
     Route::get('/people-status', [ReportController::class, 'peopleStatus']);
 });
+
+}); // End of api.token middleware group

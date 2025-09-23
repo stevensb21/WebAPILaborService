@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'upload.limits' => \App\Http\Middleware\IncreaseUploadLimits::class,
+            'api.token' => \App\Http\Middleware\ApiTokenMiddleware::class,
         ]);
         
 
