@@ -851,23 +851,29 @@
                          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                      }
                  })
-                 .then(response => {
-                     if (!response.ok) {
-                         throw new Error(`HTTP error! status: ${response.status}`);
-                     }
-                     return response.json();
-                 })
-                 .then(data => {
-                     if (data.success) {
-                         location.reload();
-                     } else {
-                         alert(data.message || 'Произошла ошибка при удалении человека');
-                     }
-                 })
-                 .catch(error => {
-                     console.error('Error:', error);
-                     alert('Произошла ошибка при удалении человека: ' + error.message);
-                 });
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        return response.json().then(errorData => {
+                            throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.message || 'Unknown error'}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Response data:', data);
+                    if (data.success) {
+                        alert('Человек успешно удален');
+                        // Принудительное обновление страницы с очисткой кэша
+                        window.location.reload(true);
+                    } else {
+                        alert(data.message || 'Произошла ошибка при удалении человека');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Произошла ошибка при удалении человека: ' + error.message);
+                });
              }
          }
 

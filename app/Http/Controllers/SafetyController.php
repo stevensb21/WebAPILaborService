@@ -93,7 +93,7 @@ class SafetyController extends Controller
             
             // Кэшируем весь результат на 5 минут
             $people = \Cache::remember($cacheKey, 300, function() use ($query) {
-                $people = $query->get();
+            $people = $query->get();
                 
                 // Загружаем сертификаты для людей отдельно (только если есть люди)
                 if ($people->count() > 0) {
@@ -174,17 +174,17 @@ class SafetyController extends Controller
             if (empty($request->assigned_date)) {
                 $status = 1; // Отсутствует
             } else {
-                $assignedDate = \Carbon\Carbon::parse($request->assigned_date);
-                $expiryDate = $assignedDate->copy()->addYears($certificate->expiry_date ?: 1);
-                $isExpired = $expiryDate->isPast();
-                $isExpiringSoon = now()->diffInDays($expiryDate, false) <= 60 && now()->diffInDays($expiryDate, false) > 0; // 2 месяца = 60 дней, но только если дата в будущем
-                
-                if ($isExpired) {
-                    $status = 2; // Просрочен
-                } elseif ($isExpiringSoon) {
-                    $status = 3; // Скоро просрочится
-                } else {
-                    $status = 4; // Действует
+            $assignedDate = \Carbon\Carbon::parse($request->assigned_date);
+            $expiryDate = $assignedDate->copy()->addYears($certificate->expiry_date ?: 1);
+            $isExpired = $expiryDate->isPast();
+            $isExpiringSoon = now()->diffInDays($expiryDate, false) <= 60 && now()->diffInDays($expiryDate, false) > 0; // 2 месяца = 60 дней, но только если дата в будущем
+            
+            if ($isExpired) {
+                $status = 2; // Просрочен
+            } elseif ($isExpiringSoon) {
+                $status = 3; // Скоро просрочится
+            } else {
+                $status = 4; // Действует
                 }
             }
             
@@ -724,27 +724,51 @@ class SafetyController extends Controller
     public function deletePerson($id)
     {
         try {
-            $person = People::findOrFail($id);
+            \Log::info('Attempting to delete person', ['id' => $id]);
+            
+            $person = People::find($id);
+            if (!$person) {
+                \Log::warning('Person not found', ['id' => $id]);
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'Человек с ID ' . $id . ' не найден'
+                ], 404);
+            }
+            
+            \Log::info('Person found', ['person' => $person->toArray()]);
             
             // Удаляем файлы
             if ($person->photo && file_exists(storage_path('app/public/' . $person->photo))) {
                 unlink(storage_path('app/public/' . $person->photo));
+                \Log::info('Photo file deleted', ['photo' => $person->photo]);
             }
             
             if ($person->passport_page_1 && file_exists(storage_path('app/public/' . $person->passport_page_1))) {
                 unlink(storage_path('app/public/' . $person->passport_page_1));
+                \Log::info('Passport page 1 deleted', ['passport_page_1' => $person->passport_page_1]);
             }
             
             if ($person->passport_page_5 && file_exists(storage_path('app/public/' . $person->passport_page_5))) {
                 unlink(storage_path('app/public/' . $person->passport_page_5));
+                \Log::info('Passport page 5 deleted', ['passport_page_5' => $person->passport_page_5]);
             }
             
             // Удаляем человека (связанные записи в people_certificates удалятся автоматически благодаря CASCADE)
             $person->delete();
+            \Log::info('Person deleted successfully', ['id' => $id]);
+            
+            // Очищаем кэш
+            \Cache::forget('people_list');
+            \Cache::forget('certificates_list');
+            \Cache::forget('positions_list');
+            \Cache::flush();
+            
+            \Log::info('Cache cleared after person deletion', ['id' => $id]);
             
             return response()->json(['success' => true, 'message' => 'Человек успешно удален']);
         } catch (\Exception $e) {
             \Log::error('DeletePerson exception:', [
+                'id' => $id,
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
@@ -753,7 +777,7 @@ class SafetyController extends Controller
             return response()->json([
                 'success' => false, 
                 'message' => 'Ошибка при удалении человека: ' . $e->getMessage()
-            ], 422);
+            ], 500); // Изменили статус с 422 на 500 для ошибок сервера
         }
     }
 
@@ -767,6 +791,10 @@ class SafetyController extends Controller
             
             // Удаляем сам сертификат
             $certificate->delete();
+            
+            // Очищаем кэш
+            \Cache::forget('certificates_list');
+            \Cache::flush();
             
             return response()->json(['success' => true, 'message' => 'Сертификат успешно удален']);
         } catch (\Exception $e) {
