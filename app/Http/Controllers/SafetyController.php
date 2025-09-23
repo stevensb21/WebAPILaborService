@@ -12,6 +12,30 @@ use Illuminate\Support\Facades\DB;
 
 class SafetyController extends Controller
 {
+    /**
+     * Очистить кэш людей
+     */
+    private function clearPeopleCache()
+    {
+        try {
+            // Пытаемся очистить кэш с паттерном
+            if (method_exists(\Cache::getStore(), 'getRedis')) {
+                $cacheKeys = \Cache::getRedis()->keys('*people_list_*');
+                foreach ($cacheKeys as $key) {
+                    \Cache::forget(str_replace('laravel_cache:', '', $key));
+                }
+                \Log::info('Cache keys cleared with pattern', ['keys' => $cacheKeys]);
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Failed to clear cache with pattern', ['error' => $e->getMessage()]);
+        }
+        
+        // Очищаем основные ключи кэша
+        \Cache::forget('people_list');
+        \Cache::forget('certificates_list');
+        \Cache::forget('positions_list');
+        \Cache::flush();
+    }
     public function __construct()
     {
         // Увеличиваем лимиты загрузки файлов
@@ -351,12 +375,7 @@ class SafetyController extends Controller
             $person = People::create($data);
             
             // Очищаем кэш при добавлении человека
-            $cacheKeys = \Cache::getRedis()->keys('*people_list_*');
-            foreach ($cacheKeys as $key) {
-                \Cache::forget(str_replace('laravel_cache:', '', $key));
-            }
-            \Cache::forget('positions_list');
-            \Cache::flush(); // Очищаем весь кэш для обновления списка людей
+            $this->clearPeopleCache();
 
             return response()->json(['success' => true, 'person' => $person]);
         } catch (\Exception $e) {
@@ -690,11 +709,7 @@ class SafetyController extends Controller
             $person->update($data);
 
             // Очищаем кэш при обновлении человека
-            $cacheKeys = \Cache::getRedis()->keys('*people_list_*');
-            foreach ($cacheKeys as $key) {
-                \Cache::forget(str_replace('laravel_cache:', '', $key));
-            }
-            \Cache::flush();
+            $this->clearPeopleCache();
 
             // Загружаем обновленные данные
             $person = $person->fresh();
@@ -768,18 +783,9 @@ class SafetyController extends Controller
             $person->delete();
             \Log::info('Person deleted successfully', ['id' => $id]);
             
-            // Очищаем кэш - используем паттерн для удаления всех ключей people_list_*
-            $cacheKeys = \Cache::getRedis()->keys('*people_list_*');
-            foreach ($cacheKeys as $key) {
-                \Cache::forget(str_replace('laravel_cache:', '', $key));
-            }
-            
-            \Cache::forget('people_list');
-            \Cache::forget('certificates_list');
-            \Cache::forget('positions_list');
-            \Cache::flush();
-            
-            \Log::info('Cache cleared after person deletion', ['id' => $id, 'cleared_keys' => $cacheKeys]);
+            // Очищаем кэш
+            $this->clearPeopleCache();
+            \Log::info('Cache cleared after person deletion', ['id' => $id]);
             
             return response()->json(['success' => true, 'message' => 'Человек успешно удален']);
         } catch (\Exception $e) {
