@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 class SafetyController extends Controller
 {
     /**
-     * Очистить кэш людей
+     * Очистить кэш людей - принудительная очистка всех кэшей
      */
     private function clearPeopleCache()
     {
@@ -30,11 +30,20 @@ class SafetyController extends Controller
             \Log::warning('Failed to clear cache with pattern', ['error' => $e->getMessage()]);
         }
         
-        // Очищаем основные ключи кэша
+        // Очищаем все основные ключи кэша
         \Cache::forget('people_list');
         \Cache::forget('certificates_list');
         \Cache::forget('positions_list');
+        
+        // Принудительно очищаем весь кэш
         \Cache::flush();
+        
+        // Дополнительно очищаем кэш конфигурации и маршрутов
+        \Artisan::call('config:clear');
+        \Artisan::call('route:clear');
+        \Artisan::call('view:clear');
+        
+        \Log::info('All caches cleared after data modification');
     }
     public function __construct()
     {
@@ -269,8 +278,7 @@ class SafetyController extends Controller
             $peopleCertificate = $peopleCertificate->fresh(['certificate']);
             
             // Очищаем кэш при обновлении сертификата
-            \Cache::forget('certificates_list');
-            \Cache::flush(); // Очищаем весь кэш для обновления списка людей
+            $this->clearPeopleCache();
             
             return response()->json([
                 'success' => true, 
@@ -409,6 +417,9 @@ class SafetyController extends Controller
             }
 
             $certificate = Certificate::create($data);
+
+            // Очищаем кэш при создании сертификата
+            $this->clearPeopleCache();
 
             return response()->json(['success' => true, 'certificate' => $certificate]);
         } catch (\Exception $e) {
@@ -815,8 +826,7 @@ class SafetyController extends Controller
             $certificate->delete();
             
             // Очищаем кэш
-            \Cache::forget('certificates_list');
-            \Cache::flush();
+            $this->clearPeopleCache();
             
             return response()->json(['success' => true, 'message' => 'Сертификат успешно удален']);
         } catch (\Exception $e) {
@@ -879,6 +889,9 @@ class SafetyController extends Controller
                 'expiry_date' => $request->expiry_date,
             ]);
 
+            // Очищаем кэш при обновлении информации о сертификате
+            $this->clearPeopleCache();
+
             return response()->json(['success' => true, 'message' => 'Сертификат успешно обновлен']);
         } catch (\Exception $e) {
             \Log::error('UpdateCertificateInfo exception:', [
@@ -918,7 +931,7 @@ class SafetyController extends Controller
             $peopleCertificate->delete();
             
             // Очищаем кэш при удалении сертификата
-            \Cache::flush(); // Очищаем весь кэш для обновления списка людей
+            $this->clearPeopleCache();
 
             return response()->json([
                 'success' => true, 
@@ -963,7 +976,7 @@ class SafetyController extends Controller
             }
             
             // Очищаем кэш
-            \Cache::forget('certificates_list');
+            $this->clearPeopleCache();
             
             return response()->json([
                 'success' => true,
