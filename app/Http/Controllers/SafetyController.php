@@ -351,6 +351,10 @@ class SafetyController extends Controller
             $person = People::create($data);
             
             // Очищаем кэш при добавлении человека
+            $cacheKeys = \Cache::getRedis()->keys('*people_list_*');
+            foreach ($cacheKeys as $key) {
+                \Cache::forget(str_replace('laravel_cache:', '', $key));
+            }
             \Cache::forget('positions_list');
             \Cache::flush(); // Очищаем весь кэш для обновления списка людей
 
@@ -685,6 +689,13 @@ class SafetyController extends Controller
             \Log::info('Updating person with data:', $data);
             $person->update($data);
 
+            // Очищаем кэш при обновлении человека
+            $cacheKeys = \Cache::getRedis()->keys('*people_list_*');
+            foreach ($cacheKeys as $key) {
+                \Cache::forget(str_replace('laravel_cache:', '', $key));
+            }
+            \Cache::flush();
+
             // Загружаем обновленные данные
             $person = $person->fresh();
             
@@ -757,13 +768,18 @@ class SafetyController extends Controller
             $person->delete();
             \Log::info('Person deleted successfully', ['id' => $id]);
             
-            // Очищаем кэш
+            // Очищаем кэш - используем паттерн для удаления всех ключей people_list_*
+            $cacheKeys = \Cache::getRedis()->keys('*people_list_*');
+            foreach ($cacheKeys as $key) {
+                \Cache::forget(str_replace('laravel_cache:', '', $key));
+            }
+            
             \Cache::forget('people_list');
             \Cache::forget('certificates_list');
             \Cache::forget('positions_list');
             \Cache::flush();
             
-            \Log::info('Cache cleared after person deletion', ['id' => $id]);
+            \Log::info('Cache cleared after person deletion', ['id' => $id, 'cleared_keys' => $cacheKeys]);
             
             return response()->json(['success' => true, 'message' => 'Человек успешно удален']);
         } catch (\Exception $e) {
