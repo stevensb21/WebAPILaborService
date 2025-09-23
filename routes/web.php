@@ -2,13 +2,20 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SafetyController;
+use App\Http\Controllers\AuthController;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-// Маршруты для охраны труда
-Route::get('/safety', [SafetyController::class, 'index'])->name('safety.index');
+// Маршруты аутентификации
+Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Маршруты для охраны труда (требуют аутентификации)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/safety', [SafetyController::class, 'index'])->name('safety.index');
 Route::post('/safety/update-certificate/{peopleId}/{certificateId}', [SafetyController::class, 'updateCertificate'])->name('safety.update-certificate');
 Route::post('/safety/store-person', [SafetyController::class, 'storePerson'])->name('safety.store-person');
 Route::post('/safety/update-person/{id}', [SafetyController::class, 'updatePerson'])->name('safety.update-person');
@@ -24,6 +31,7 @@ Route::delete('/safety/delete-certificate/{id}', [SafetyController::class, 'dele
 Route::delete('/safety/delete-person-certificate/{peopleId}/{certificateId}', [SafetyController::class, 'deletePersonCertificate'])->name('safety.delete-person-certificate');
 Route::post('/safety/update-certificate-info/{id}', [SafetyController::class, 'updateCertificateInfo'])->name('safety.update-certificate-info');
 
-// Маршруты для управления порядком сертификатов
-Route::get('/safety/certificate-order-modal', [SafetyController::class, 'showCertificateOrderModal'])->name('safety.certificate-order-modal');
-Route::post('/safety/update-certificate-order', [SafetyController::class, 'updateCertificateOrder'])->name('safety.update-certificate-order');
+    // Маршруты для управления порядком сертификатов
+    Route::get('/safety/certificate-order-modal', [SafetyController::class, 'showCertificateOrderModal'])->name('safety.certificate-order-modal');
+    Route::post('/safety/update-certificate-order', [SafetyController::class, 'updateCertificateOrder'])->name('safety.update-certificate-order');
+});

@@ -1,0 +1,1 @@
+docker compose exec laravel-app php artisan admin:create --name="admin" --email="admin@tetrakom.ru" --password="admin123" - создание администратора

@@ -39,7 +39,20 @@
                         <i class="fas fa-shield-alt text-primary"></i>
                         Управление сертификатами по охране труда
                     </h1>
-                                         <div>
+                    <div class="d-flex align-items-center">
+                        <span class="me-3 text-muted">
+                            <i class="fas fa-user"></i> {{ Auth::user()->name }}
+                        </span>
+                        <form method="POST" action="{{ route('logout') }}" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-danger">
+                                <i class="fas fa-sign-out-alt"></i> Выйти
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end mb-4">
+                    <div>
                          <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#certificateOrderModal">
                              <i class="fas fa-sort"></i> Порядок сертификатов
                          </button>

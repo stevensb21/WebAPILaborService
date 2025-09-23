@@ -108,7 +108,7 @@ class SafetyController extends Controller
             
             // Кэшируем сертификаты на 1 час (они редко изменяются)
             $certificates = \Cache::remember('certificates_list', 3600, function() {
-                return Certificate::select('certificates.id', 'certificates.name', 'certificates.expiry_date')
+                return Certificate::select('certificates.id', 'certificates.name', 'certificates.description', 'certificates.expiry_date')
                     ->leftJoin('certificate_orders', 'certificates.id', '=', 'certificate_orders.certificate_id')
                     ->orderBy('certificate_orders.sort_order', 'asc')
                     ->orderBy('certificates.id', 'asc')
