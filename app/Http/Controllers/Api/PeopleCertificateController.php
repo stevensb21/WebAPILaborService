@@ -349,6 +349,47 @@ class PeopleCertificateController extends Controller
     }
 
     /**
+     * Удалить сертификат у человека по ID человека и ID сертификата
+     */
+    public function destroyByPeopleAndCertificate(string $peopleId, string $certificateId)
+    {
+        try {
+            // Находим связь между человеком и сертификатом
+            $peopleCertificate = PeopleCertificate::where('people_id', $peopleId)
+                ->where('certificate_id', $certificateId)
+                ->first();
+
+            if (!$peopleCertificate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Связь между человеком и сертификатом не найдена'
+                ], 404);
+            }
+
+            // Удаляем файл сертификата, если он существует
+            if ($peopleCertificate->certificate_file && file_exists(storage_path('app/public/certificates/' . $peopleCertificate->certificate_file))) {
+                unlink(storage_path('app/public/certificates/' . $peopleCertificate->certificate_file));
+            }
+
+            // Удаляем связь
+            $peopleCertificate->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Сертификат успешно удален у человека'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('API PeopleCertificate destroyByPeopleAndCertificate error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при удалении сертификата у человека',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Получить MIME тип файла по URL
      */
     private function getMimeType($url)

@@ -50,6 +50,7 @@ Route::prefix('people-certificates')->group(function () {
     Route::post('/', [PeopleCertificateController::class, 'store']);
     Route::put('/{id}', [PeopleCertificateController::class, 'update']);
     Route::delete('/{id}', [PeopleCertificateController::class, 'destroy']);
+    Route::delete('/people/{peopleId}/certificate/{certificateId}', [PeopleCertificateController::class, 'destroyByPeopleAndCertificate']);
 });
 
 // Reports API Routes
