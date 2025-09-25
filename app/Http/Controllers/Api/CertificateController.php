@@ -37,19 +37,12 @@ class CertificateController extends Controller
                 }
             }
 
-            // Пагинация
-            $perPage = $request->get('per_page', 20);
-            $certificates = $query->paginate($perPage);
+            // Получаем все сертификаты без пагинации
+            $certificates = $query->orderBy('name')->get();
 
             return response()->json([
                 'success' => true,
-                'data' => $certificates->items(),
-                'pagination' => [
-                    'current_page' => $certificates->currentPage(),
-                    'last_page' => $certificates->lastPage(),
-                    'per_page' => $certificates->perPage(),
-                    'total' => $certificates->total(),
-                ]
+                'data' => $certificates
             ]);
 
         } catch (\Exception $e) {

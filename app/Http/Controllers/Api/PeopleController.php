@@ -159,15 +159,14 @@ class PeopleController extends Controller
                 $query->where('status', 'ILIKE', '%' . $request->status . '%');
             }
 
-            // Пагинация
-            $perPage = $request->get('per_page', 15);
-            $people = $query->with('certificates')->paginate($perPage);
+            // Получаем всех людей без пагинации
+            $people = $query->with('certificates')->get();
             
             // Загружаем все сертификаты для каждого человека
             $allCertificates = \App\Models\Certificate::all();
             
             // Добавляем все сертификаты к каждому человеку
-            $people->getCollection()->transform(function ($person) use ($allCertificates) {
+            $people->transform(function ($person) use ($allCertificates) {
                 $assignedCertificateIds = $person->certificates->pluck('id')->toArray();
                 
                 $allCertificatesWithStatus = $allCertificates->map(function ($certificate) use ($assignedCertificateIds, $person) {
@@ -200,20 +199,13 @@ class PeopleController extends Controller
             });
             
             Log::info('API People index result', [
-                'total' => $people->total(),
-                'count' => count($people->items()),
+                'total' => $people->count(),
                 'search_applied' => $request->filled('search')
             ]);
 
             return response()->json([
                 'success' => true,
-                'data' => $people->items(),
-                'pagination' => [
-                    'current_page' => $people->currentPage(),
-                    'last_page' => $people->lastPage(),
-                    'per_page' => $people->perPage(),
-                    'total' => $people->total(),
-                ]
+                'data' => $people
             ]);
 
         } catch (\Exception $e) {
