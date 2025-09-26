@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Console\Attributes\AsCommand;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Artisan;
@@ -10,6 +11,7 @@ use App\Models\People;
 use App\Models\Certificate;
 use App\Models\PeopleCertificate;
 
+#[AsCommand(name: 'certificates:rotate-misassigned', description: 'Перекинуть сертификаты у людей со статусом "Не работающий": ОПП ИТР → Высота(рабочая, 2гр) → Люльки → ОПП ИТР')]
 class RotateMisassignedCertificates extends Command
 {
     /**
