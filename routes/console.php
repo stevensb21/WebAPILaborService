@@ -91,3 +91,77 @@ Artisan::command('certificates:rotate-misassigned {--apply : Apply changes inste
 
     return 0;
 })->purpose('Перекинуть сертификаты у людей со статусом "Не работающий" с поддержкой --apply');
+
+// Прямая команда без опций: сразу применяет изменения
+Artisan::command('fix:rotate-apply', function () {
+    $apply = true;
+
+    $nameA = 'ОПП ИТР';
+    $nameB = 'Высота(рабочая, 2гр)';
+    $nameC = 'Люльки';
+
+    $certA = Certificate::where('name', $nameA)->first();
+    $certB = Certificate::where('name', $nameB)->first();
+    $certC = Certificate::where('name', $nameC)->first();
+
+    if (!$certA || !$certB || !$certC) {
+        $this->error('Не найдены нужные сертификаты');
+        return 1;
+    }
+
+    $map = [
+        $certA->id => $certB->id,
+        $certB->id => $certC->id,
+        $certC->id => $certA->id,
+    ];
+
+    $this->info('Начинаю ПРИМЕНЕНИЕ ротации сертификатов для статуса "Не работающий"');
+
+    $people = People::whereRaw("TRIM(REPLACE(REPLACE(status, '\n', ''), '\r', '')) = ?", ['Не работающий'])->get(['id','full_name']);
+
+    $affectedPeople = 0;
+    $affectedLinks = 0;
+
+    foreach ($people as $person) {
+        $links = PeopleCertificate::where('people_id', $person->id)
+            ->whereIn('certificate_id', array_keys($map))
+            ->orderBy('certificate_id')
+            ->get();
+
+        if ($links->isEmpty()) continue;
+        $affectedPeople++;
+
+        DB::transaction(function () use ($links, $map, $person, &$affectedLinks) {
+            $byCert = $links->keyBy('certificate_id');
+            foreach ($byCert as $srcCertId => $pc) {
+                $dstCertId = $map[$srcCertId] ?? null;
+                if (!$dstCertId) continue;
+
+                $existingDst = PeopleCertificate::where('people_id', $pc->people_id)
+                    ->where('certificate_id', $dstCertId)
+                    ->first();
+                if ($existingDst) {
+                    PeopleCertificate::where('id', $existingDst->id)->delete();
+                }
+                PeopleCertificate::where('id', $pc->id)->update(['certificate_id' => $dstCertId]);
+
+                $affectedLinks++;
+                $this->line('[APPLY] ' . sprintf('Person #%d: %s | %d → %d', $person->id, $person->full_name, $srcCertId, $dstCertId));
+            }
+        });
+    }
+
+    $this->info("Итого людей затронуто: {$affectedPeople}, связей изменено: {$affectedLinks}");
+
+    try {
+        Cache::flush();
+        ArtisanFacade::call('view:clear');
+        ArtisanFacade::call('route:clear');
+        ArtisanFacade::call('config:clear');
+    } catch (\Throwable $e) {
+        $this->warn('Ошибка очистки кэша: ' . $e->getMessage());
+    }
+    $this->info('Кэш очищен.');
+
+    return 0;
+})->purpose('Применить ротацию сертификатов без опций');
