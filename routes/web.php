@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SafetyController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ApiTokenController;
+use App\Http\Controllers\BackupController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -35,6 +36,9 @@ Route::post('/safety/update-certificate-info/{id}', [SafetyController::class, 'u
     // Маршруты для управления порядком сертификатов
     Route::get('/safety/certificate-order-modal', [SafetyController::class, 'showCertificateOrderModal'])->name('safety.certificate-order-modal');
     Route::post('/safety/update-certificate-order', [SafetyController::class, 'updateCertificateOrder'])->name('safety.update-certificate-order');
+
+    // Скачать резервную копию БД
+    Route::get('/safety/backup', [BackupController::class, 'download'])->name('safety.backup');
 
     // Маршруты для управления API токенами
     Route::resource('api-tokens', ApiTokenController::class);

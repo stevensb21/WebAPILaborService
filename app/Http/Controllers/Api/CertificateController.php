@@ -18,14 +18,16 @@ class CertificateController extends Controller
         try {
             $query = Certificate::query();
 
-            // Фильтрация по названию
+            // Фильтрация по названию (без учета регистра и лишних пробелов)
             if ($request->filled('search_name')) {
-                $query->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($request->search_name) . '%']);
+                $term = trim(preg_replace('/\s+/', ' ', $request->search_name));
+                $query->where('name', 'ILIKE', '%' . $term . '%');
             }
 
-            // Фильтрация по описанию
+            // Фильтрация по описанию (без учета регистра и лишних пробелов)
             if ($request->filled('search_description')) {
-                $query->whereRaw('LOWER(description) LIKE ?', ['%' . strtolower($request->search_description) . '%']);
+                $term = trim(preg_replace('/\s+/', ' ', $request->search_description));
+                $query->where('description', 'ILIKE', '%' . $term . '%');
             }
 
             // Фильтрация по статусу назначения

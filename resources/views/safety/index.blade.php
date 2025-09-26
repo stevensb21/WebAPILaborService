@@ -53,6 +53,9 @@
                 </div>
                 <div class="d-flex justify-content-end mb-4">
                     <div>
+                         <a href="{{ route('safety.backup') }}" class="btn btn-outline-secondary me-2">
+                             <i class="fas fa-database"></i> Скачать резервную копию
+                         </a>
                          <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#certificateOrderModal">
                              <i class="fas fa-sort"></i> Порядок сертификатов
                          </button>
@@ -1178,26 +1181,32 @@
             const filterForm = document.querySelector('.filter-section form');
             const filterInputs = filterForm.querySelectorAll('select, input[type="text"]:not(#search_fio)');
             
+            // Отключаем авто-сабмит на изменение
             filterInputs.forEach(input => {
                 input.addEventListener('change', function() {
-                    filterForm.submit();
+                    // авто-сабмит отключен — фильтры применяются только по кнопке
                 });
             });
              
-            // Для полей поиска добавляем задержку (исключаем search_fio - поиск только по кнопке)
+            // Для полей поиска убираем авто-сабмит (поиск только по кнопке)
             const searchInputs = ['search_position', 'search_phone', 'search_status'];
-             searchInputs.forEach(inputId => {
-                 const input = document.getElementById(inputId);
-                 if (input) {
-                     let searchTimeout;
-                     input.addEventListener('input', function() {
-                         clearTimeout(searchTimeout);
-                         searchTimeout = setTimeout(() => {
-                             filterForm.submit();
-                         }, 500); // Задержка 500мс
-                     });
-                 }
-             });
+            searchInputs.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.addEventListener('input', function() {
+                        // авто-сабмит отключен — фильтры применяются только по кнопке
+                    });
+                }
+            });
+
+            // Применение фильтров только по кнопке
+            const applyBtn = document.getElementById('applyFiltersBtn');
+            if (applyBtn && filterForm) {
+                applyBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    filterForm.submit();
+                });
+            }
          });
 
          // Функция для обновления ячейки сертификата

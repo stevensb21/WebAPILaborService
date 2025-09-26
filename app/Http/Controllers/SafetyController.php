@@ -65,28 +65,28 @@ class SafetyController extends Controller
             // Начинаем с базового запроса без загрузки сертификатов для оптимизации
             $query = People::select('id', 'full_name', 'position', 'phone', 'status', 'address', 'created_at', 'updated_at');
             
-            // Фильтр по ФИО (нечувствительный к регистру)
+            // Фильтр по ФИО (без учета регистра и лишних пробелов)
             if ($request->filled('search_fio')) {
-                $searchTerm = trim($request->search_fio);
-                $query->where('full_name', 'LIKE', '%' . $searchTerm . '%');
+                $searchTerm = trim(preg_replace('/\s+/', ' ', $request->search_fio));
+                $query->where('full_name', 'ILIKE', '%' . $searchTerm . '%');
             }
             
-            // Фильтр по должности (нечувствительный к регистру)
+            // Фильтр по должности (без учета регистра и лишних пробелов)
             if ($request->filled('search_position')) {
-                $searchTerm = trim($request->search_position);
-                $query->where('position', 'LIKE', '%' . $searchTerm . '%');
+                $searchTerm = trim(preg_replace('/\s+/', ' ', $request->search_position));
+                $query->where('position', 'ILIKE', '%' . $searchTerm . '%');
             }
             
-            // Фильтр по телефону (нечувствительный к регистру)
+            // Фильтр по телефону (без учета регистра и лишних пробелов)
             if ($request->filled('search_phone')) {
-                $searchTerm = trim($request->search_phone);
-                $query->where('phone', 'LIKE', '%' . $searchTerm . '%');
+                $searchTerm = trim(preg_replace('/\s+/', ' ', $request->search_phone));
+                $query->where('phone', 'ILIKE', '%' . $searchTerm . '%');
             }
             
-            // Фильтр по статусу работника (нечувствительный к регистру)
+            // Фильтр по статусу работника (без учета регистра и лишних пробелов)
             if ($request->filled('search_status')) {
-                $searchTerm = trim($request->search_status);
-                $query->where('status', 'LIKE', '%' . $searchTerm . '%');
+                $searchTerm = trim(preg_replace('/\s+/', ' ', $request->search_status));
+                $query->where('status', 'ILIKE', '%' . $searchTerm . '%');
             }
             
             // Фильтр по статусу сертификата (без указания конкретного сертификата)

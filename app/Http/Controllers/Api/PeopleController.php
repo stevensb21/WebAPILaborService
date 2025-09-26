@@ -23,7 +23,7 @@ class PeopleController extends Controller
 
             // Фильтры
             if ($request->filled('search')) {
-                $search = $request->search;
+                $search = trim(preg_replace('/\s+/', ' ', $request->search));
                 Log::info('Search filter applied', ['search' => $search]);
                 
                 $query->where(function($q) use ($search) {
@@ -38,15 +38,18 @@ class PeopleController extends Controller
             }
 
             if ($request->filled('position')) {
-                $query->where('position', 'ILIKE', '%' . $request->position . '%');
+                $term = trim(preg_replace('/\s+/', ' ', $request->position));
+                $query->where('position', 'ILIKE', '%' . $term . '%');
             }
 
             if ($request->filled('phone')) {
-                $query->where('phone', 'ILIKE', '%' . $request->phone . '%');
+                $term = trim(preg_replace('/\s+/', ' ', $request->phone));
+                $query->where('phone', 'ILIKE', '%' . $term . '%');
             }
 
             if ($request->filled('status')) {
-                $query->where('status', 'ILIKE', '%' . $request->status . '%');
+                $term = trim(preg_replace('/\s+/', ' ', $request->status));
+                $query->where('status', 'ILIKE', '%' . $term . '%');
             }
 
             // Получаем всех людей без пагинации для бота
