@@ -63,7 +63,7 @@ class SafetyController extends Controller
             ]);
             
             // Начинаем с базового запроса без загрузки сертификатов для оптимизации
-            $query = People::select('id', 'full_name', 'position', 'phone', 'status', 'address', 'created_at', 'updated_at');
+            $query = People::select('id', 'full_name', 'position', 'phone', 'snils', 'inn', 'birth_date', 'photo', 'passport_page_1', 'passport_page_5', 'certificates_file', 'status', 'address', 'created_at', 'updated_at');
             
             // Фильтр по ФИО (без учета регистра и лишних пробелов)
             if ($request->filled('search_fio')) {
