@@ -52,7 +52,7 @@
                     </div>
                 </div>
                 <div class="d-flex justify-content-end mb-4">
-                    <div>
+                                         <div>
                          <a href="{{ route('safety.backup') }}" class="btn btn-outline-secondary me-2">
                              <i class="fas fa-database"></i> Скачать резервную копию
                          </a>
@@ -338,9 +338,9 @@
                                             
                                             <div class="d-flex gap-1 mt-1">
                                                 <button class="btn btn-sm btn-outline-primary btn-edit" 
-                                                        onclick="editCertificate({{ $person->id }}, {{ $certificate->id }}, {{ json_encode($pivot ? ($pivot->assigned_date instanceof \Carbon\Carbon ? $pivot->assigned_date->format('Y-m-d') : \Carbon\Carbon::parse($pivot->assigned_date)->format('Y-m-d')) : '') }}, {{ json_encode($pivot ? $pivot->certificate_number : '') }}, {{ json_encode($pivot ? $pivot->notes : '') }})">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
+                                                    onclick="editCertificate({{ $person->id }}, {{ $certificate->id }}, {{ json_encode($pivot ? ($pivot->assigned_date instanceof \Carbon\Carbon ? $pivot->assigned_date->format('Y-m-d') : \Carbon\Carbon::parse($pivot->assigned_date)->format('Y-m-d')) : '') }}, {{ json_encode($pivot ? $pivot->certificate_number : '') }}, {{ json_encode($pivot ? $pivot->notes : '') }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
                                                 @if($pivot)
                                                     <button class="btn btn-sm btn-outline-danger" 
                                                             onclick="deletePersonCertificate({{ $person->id }}, {{ $certificate->id }}, {{ json_encode($person->full_name) }}, {{ json_encode($certificate->name) }})"
@@ -456,7 +456,7 @@
                                     <input type="date" class="form-control" id="birth_date" name="birth_date">
                                 </div>
                                                                  <div class="mb-3">
-                                     <label for="address" class="form-label">Адрес</label>
+                                     <label for="address" class="form-label">Примечание</label>
                                      <textarea class="form-control" id="address" name="address" rows="3"></textarea>
                                  </div>
                                  <div class="mb-3">
@@ -562,7 +562,7 @@
                                      <input type="date" class="form-control" id="edit_birth_date" name="birth_date">
                                  </div>
                                  <div class="mb-3">
-                                     <label for="edit_address" class="form-label">Адрес</label>
+                                     <label for="edit_address" class="form-label">Примечание</label>
                                      <textarea class="form-control" id="edit_address" name="address" rows="3"></textarea>
                                  </div>
                                  <div class="mb-3">
@@ -685,13 +685,69 @@
                  </form>
              </div>
          </div>
-    </div>
+     </div>
 
     <!-- Модальное окно для изменения порядка сертификатов -->
     @include('safety.certificate-order-modal')
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script>
+        // Универсальная навигация по полям ввода в модальных окнах стрелками вверх/вниз
+        document.addEventListener('DOMContentLoaded', function() {
+            // Находим все модальные окна
+            const modals = document.querySelectorAll('.modal');
+            
+            modals.forEach(modal => {
+                modal.addEventListener('shown.bs.modal', function() {
+                    // Получаем все интерактивные поля в текущем модальном окне
+                    const fields = modal.querySelectorAll('input:not([type="hidden"]):not([type="file"]), select, textarea');
+                    const fieldArray = Array.from(fields).filter(f => !f.disabled && !f.readOnly);
+                    
+                    if (fieldArray.length === 0) return;
+                    
+                    // Устанавливаем фокус на первое поле при открытии модального окна
+                    setTimeout(() => {
+                        fieldArray[0].focus();
+                    }, 100);
+                    
+                    // Обработчик для навигации стрелками
+                    const handleArrowNavigation = function(e) {
+                        // Проверяем, что фокус находится внутри этого модального окна
+                        if (!modal.contains(document.activeElement)) return;
+                        
+                        const currentField = document.activeElement;
+                        const currentIndex = fieldArray.indexOf(currentField);
+                        
+                        if (currentIndex === -1) return;
+                        
+                        // Стрелка вниз - переход к следующему полю
+                        if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            const nextIndex = (currentIndex + 1) % fieldArray.length;
+                            fieldArray[nextIndex].focus();
+                        }
+                        
+                        // Стрелка вверх - переход к предыдущему полю
+                        if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            const prevIndex = (currentIndex - 1 + fieldArray.length) % fieldArray.length;
+                            fieldArray[prevIndex].focus();
+                        }
+                    };
+                    
+                    // Добавляем обработчик для этого модального окна
+                    modal.addEventListener('keydown', handleArrowNavigation);
+                    
+                    // Удаляем обработчик при закрытии модального окна
+                    modal.addEventListener('hidden.bs.modal', function cleanup() {
+                        modal.removeEventListener('keydown', handleArrowNavigation);
+                        modal.removeEventListener('hidden.bs.modal', cleanup);
+                    });
+                });
+            });
+        });
+    </script>
     <script>
                           function showCertificateDescription(certificateId) {
              console.log('Opening certificate description for ID:', certificateId);
@@ -854,29 +910,29 @@
                          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                      }
                  })
-                .then(response => {
+                 .then(response => {
                     console.log('Response status:', response.status);
-                    if (!response.ok) {
+                     if (!response.ok) {
                         return response.json().then(errorData => {
                             throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.message || 'Unknown error'}`);
                         });
-                    }
-                    return response.json();
-                })
-                .then(data => {
+                     }
+                     return response.json();
+                 })
+                 .then(data => {
                     console.log('Response data:', data);
-                    if (data.success) {
+                     if (data.success) {
                         alert('Человек успешно удален');
                         // Принудительное обновление страницы с очисткой кэша
                         window.location.reload(true);
-                    } else {
-                        alert(data.message || 'Произошла ошибка при удалении человека');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Произошла ошибка при удалении человека: ' + error.message);
-                });
+                     } else {
+                         alert(data.message || 'Произошла ошибка при удалении человека');
+                     }
+                 })
+                 .catch(error => {
+                     console.error('Error:', error);
+                     alert('Произошла ошибка при удалении человека: ' + error.message);
+                 });
              }
          }
 
@@ -1190,14 +1246,14 @@
              
             // Для полей поиска убираем авто-сабмит (поиск только по кнопке)
             const searchInputs = ['search_position', 'search_phone', 'search_status'];
-            searchInputs.forEach(inputId => {
-                const input = document.getElementById(inputId);
-                if (input) {
-                    input.addEventListener('input', function() {
+             searchInputs.forEach(inputId => {
+                 const input = document.getElementById(inputId);
+                 if (input) {
+                     input.addEventListener('input', function() {
                         // авто-сабмит отключен — фильтры применяются только по кнопке
-                    });
-                }
-            });
+                     });
+                 }
+             });
 
             // Применение фильтров только по кнопке
             const applyBtn = document.getElementById('applyFiltersBtn');
@@ -1285,8 +1341,8 @@
                  <div class="d-flex gap-1 mt-1">
                      <button class="btn btn-sm btn-outline-primary btn-edit" 
                              onclick="editCertificate(${peopleId}, ${certificateId}, '${data.assigned_date}', '${data.certificate_number || ''}', '${data.notes || ''}')">
-                         <i class="fas fa-edit"></i>
-                     </button>
+                     <i class="fas fa-edit"></i>
+                 </button>
                      <button class="btn btn-sm btn-outline-danger" 
                              onclick="deletePersonCertificate(${peopleId}, ${certificateId}, '', '')"
                              title="Удалить сертификат">
