@@ -23,7 +23,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 // API Routes with token authentication
-Route::middleware(['api.token'])->group(function () {
+Route::middleware(['api.token', 'upload.limits'])->group(function () {
     
 // People API Routes
 Route::prefix('people')->group(function () {
