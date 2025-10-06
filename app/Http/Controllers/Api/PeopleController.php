@@ -813,6 +813,14 @@ class PeopleController extends Controller
     public function uploadCertificatesFile(Request $request, string $id)
     {
         try {
+            // Логируем входящий запрос
+            Log::info('Upload certificates file request', [
+                'person_id' => $id,
+                'has_file' => $request->hasFile('certificates_file'),
+                'all_files' => $request->allFiles(),
+                'request_data' => $request->all()
+            ]);
+
             $person = People::find($id);
             if (!$person) {
                 return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
@@ -823,6 +831,7 @@ class PeopleController extends Controller
             ]);
 
             if ($validator->fails()) {
+                Log::error('Upload validation failed', ['errors' => $validator->errors()]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Ошибка валидации',
@@ -836,6 +845,30 @@ class PeopleController extends Controller
             }
 
             $file = $request->file('certificates_file');
+            
+            // Логируем информацию о файле
+            Log::info('File upload details', [
+                'file_exists' => $file ? 'yes' : 'no',
+                'is_valid' => $file ? $file->isValid() : 'no file',
+                'original_name' => $file ? $file->getClientOriginalName() : 'no file',
+                'size' => $file ? $file->getSize() : 'no file',
+                'mime_type' => $file ? $file->getMimeType() : 'no file',
+                'temp_path' => $file ? $file->getPathname() : 'no file'
+            ]);
+            
+            // Проверяем, что файл действительно загружен
+            if (!$file || !$file->isValid()) {
+                Log::error('File upload failed', [
+                    'file_exists' => $file ? 'yes' : 'no',
+                    'is_valid' => $file ? $file->isValid() : 'no file',
+                    'error' => $file ? $file->getError() : 'no file'
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Файл не был загружен или поврежден'
+                ], 422);
+            }
+            
             $filename = time() . '_certificates_file.' . $file->getClientOriginalExtension();
             $filePath = 'certificates/' . $filename;
             $fullPath = storage_path('app/public/' . $filePath);
@@ -845,13 +878,21 @@ class PeopleController extends Controller
                 mkdir(storage_path('app/public/certificates'), 0755, true);
             }
 
-            $file->move(dirname($fullPath), basename($fullPath));
+            // Используем storeAs вместо move для более надежной загрузки
+            $storedPath = $file->storeAs('certificates', $filename, 'public');
+            
+            if (!$storedPath) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Не удалось сохранить файл'
+                ], 500);
+            }
 
             $person->update([
                 'certificates_file' => $filename,
                 'certificates_file_original_name' => $file->getClientOriginalName(),
                 'certificates_file_mime_type' => $file->getMimeType(),
-                'certificates_file_size' => filesize($fullPath),
+                'certificates_file_size' => $file->getSize(),
             ]);
 
             return response()->json([
@@ -860,7 +901,8 @@ class PeopleController extends Controller
                 'data' => [
                     'filename' => $filename,
                     'original_name' => $file->getClientOriginalName(),
-                    'size' => filesize($fullPath)
+                    'size' => $file->getSize(),
+                    'path' => $storedPath
                 ]
             ]);
 
