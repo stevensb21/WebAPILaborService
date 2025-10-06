@@ -34,6 +34,16 @@ Route::prefix('people')->group(function () {
     Route::get('/{id}', [PeopleController::class, 'show']);
     Route::put('/{id}', [PeopleController::class, 'update']);
     Route::delete('/{id}', [PeopleController::class, 'destroy']);
+    
+    // File management routes
+    Route::post('/{id}/certificates-file', [PeopleController::class, 'uploadCertificatesFile']);
+    Route::delete('/{id}/certificates-file', [PeopleController::class, 'deleteCertificatesFile']);
+    Route::post('/{id}/photo', [PeopleController::class, 'uploadPhoto']);
+    Route::delete('/{id}/photo', [PeopleController::class, 'deletePhoto']);
+    Route::post('/{id}/passport-page-1', [PeopleController::class, 'uploadPassportPage1']);
+    Route::delete('/{id}/passport-page-1', [PeopleController::class, 'deletePassportPage1']);
+    Route::post('/{id}/passport-page-5', [PeopleController::class, 'uploadPassportPage5']);
+    Route::delete('/{id}/passport-page-5', [PeopleController::class, 'deletePassportPage5']);
 });
 
 // Certificates API Routes

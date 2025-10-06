@@ -604,6 +604,12 @@
                                             name="certificates_file" accept=".pdf">
                                      <small class="form-text text-muted">Поддерживаемый формат: PDF. Максимальный размер: 200MB</small>
                                  </div>
+                                 
+                                 <!-- Отображение текущих файлов -->
+                                 <div id="currentFilesSection" class="mb-3" style="display: none;">
+                                     <h6 class="text-primary">Прикрепленные файлы:</h6>
+                                     <div id="currentFilesList"></div>
+                                 </div>
                              </div>
                          </div>
                      </div>
@@ -890,7 +896,163 @@
              document.getElementById('edit_address').value = address;
              document.getElementById('edit_status').value = status || '';
              
+             // Загружаем информацию о файлах
+             loadPersonFiles(id);
+             
              new bootstrap.Modal(document.getElementById('editPersonModal')).show();
+         }
+
+         // Загрузить информацию о файлах человека
+         function loadPersonFiles(personId) {
+             fetch(`/api/people/${personId}`, {
+                 headers: {
+                     'Authorization': 'Bearer ' + getApiToken(),
+                     'Content-Type': 'application/json'
+                 }
+             })
+             .then(response => response.json())
+             .then(data => {
+                 if (data.success) {
+                     displayCurrentFiles(data.data);
+                 }
+             })
+             .catch(error => {
+                 console.error('Error loading person files:', error);
+             });
+         }
+
+         // Отобразить текущие файлы
+         function displayCurrentFiles(person) {
+             const filesSection = document.getElementById('currentFilesSection');
+             const filesList = document.getElementById('currentFilesList');
+             
+             let filesHtml = '';
+             let hasFiles = false;
+
+             // Фото
+             if (person.photo) {
+                 hasFiles = true;
+                 filesHtml += `
+                     <div class="d-flex align-items-center justify-content-between mb-2 p-2 border rounded">
+                         <div class="d-flex align-items-center">
+                             <i class="fas fa-image text-primary me-2"></i>
+                             <span>Фото: ${person.photo_original_name || person.photo}</span>
+                         </div>
+                         <div>
+                             <button class="btn btn-sm btn-outline-danger" onclick="deleteFile(${person.id}, 'photo')">
+                                 <i class="fas fa-trash"></i>
+                             </button>
+                         </div>
+                     </div>
+                 `;
+             }
+
+             // Паспорт 1 страница
+             if (person.passport_page_1) {
+                 hasFiles = true;
+                 filesHtml += `
+                     <div class="d-flex align-items-center justify-content-between mb-2 p-2 border rounded">
+                         <div class="d-flex align-items-center">
+                             <i class="fas fa-id-card text-info me-2"></i>
+                             <span>Паспорт (1 стр): ${person.passport_page_1_original_name || person.passport_page_1}</span>
+                         </div>
+                         <div>
+                             <button class="btn btn-sm btn-outline-danger" onclick="deleteFile(${person.id}, 'passport_page_1')">
+                                 <i class="fas fa-trash"></i>
+                             </button>
+                         </div>
+                     </div>
+                 `;
+             }
+
+             // Паспорт 5 страница
+             if (person.passport_page_5) {
+                 hasFiles = true;
+                 filesHtml += `
+                     <div class="d-flex align-items-center justify-content-between mb-2 p-2 border rounded">
+                         <div class="d-flex align-items-center">
+                             <i class="fas fa-id-card text-info me-2"></i>
+                             <span>Паспорт (5 стр): ${person.passport_page_5_original_name || person.passport_page_5}</span>
+                         </div>
+                         <div>
+                             <button class="btn btn-sm btn-outline-danger" onclick="deleteFile(${person.id}, 'passport_page_5')">
+                                 <i class="fas fa-trash"></i>
+                             </button>
+                         </div>
+                     </div>
+                 `;
+             }
+
+             // Файл со всеми удостоверениями
+             if (person.certificates_file) {
+                 hasFiles = true;
+                 filesHtml += `
+                     <div class="d-flex align-items-center justify-content-between mb-2 p-2 border rounded">
+                         <div class="d-flex align-items-center">
+                             <i class="fas fa-certificate text-warning me-2"></i>
+                             <span>Удостоверения: ${person.certificates_file_original_name || person.certificates_file}</span>
+                         </div>
+                         <div>
+                             <button class="btn btn-sm btn-outline-danger" onclick="deleteFile(${person.id}, 'certificates_file')">
+                                 <i class="fas fa-trash"></i>
+                             </button>
+                         </div>
+                     </div>
+                 `;
+             }
+
+             if (hasFiles) {
+                 filesSection.style.display = 'block';
+                 filesList.innerHTML = filesHtml;
+             } else {
+                 filesSection.style.display = 'none';
+             }
+         }
+
+         // Удалить файл
+         function deleteFile(personId, fileType) {
+             if (!confirm('Вы уверены, что хотите удалить этот файл?')) {
+                 return;
+             }
+
+             const endpoints = {
+                 'photo': `/api/people/${personId}/photo`,
+                 'passport_page_1': `/api/people/${personId}/passport-page-1`,
+                 'passport_page_5': `/api/people/${personId}/passport-page-5`,
+                 'certificates_file': `/api/people/${personId}/certificates-file`
+             };
+
+             fetch(endpoints[fileType], {
+                 method: 'DELETE',
+                 headers: {
+                     'Authorization': 'Bearer ' + getApiToken(),
+                     'Content-Type': 'application/json'
+                 }
+             })
+             .then(response => response.json())
+             .then(data => {
+                 if (data.success) {
+                     alert(data.message);
+                     // Перезагружаем список файлов
+                     loadPersonFiles(personId);
+                     // Обновляем страницу для отображения изменений
+                     setTimeout(() => {
+                         location.reload();
+                     }, 1000);
+                 } else {
+                     alert('Ошибка: ' + data.message);
+                 }
+             })
+             .catch(error => {
+                 console.error('Error deleting file:', error);
+                 alert('Ошибка при удалении файла');
+             });
+         }
+
+         // Получить API токен (заглушка - в реальном приложении нужно получать из localStorage или другого места)
+         function getApiToken() {
+             // В реальном приложении здесь должен быть токен
+             return 'your-api-token-here';
          }
 
          function showEditCertificateModal(id, name, description, expiryDate) {

@@ -806,4 +806,378 @@ class PeopleController extends Controller
         
         return $mimeTypes[$extension] ?? 'application/octet-stream';
     }
+
+    /**
+     * Загрузить файл со всеми удостоверениями
+     */
+    public function uploadCertificatesFile(Request $request, string $id)
+    {
+        try {
+            $person = People::find($id);
+            if (!$person) {
+                return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'certificates_file' => 'required|file|mimes:pdf|max:204800', // 200MB
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка валидации',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Удаляем старый файл
+            if ($person->certificates_file && file_exists(storage_path('app/public/certificates/' . $person->certificates_file))) {
+                unlink(storage_path('app/public/certificates/' . $person->certificates_file));
+            }
+
+            $file = $request->file('certificates_file');
+            $filename = time() . '_certificates_file.' . $file->getClientOriginalExtension();
+            $filePath = 'certificates/' . $filename;
+            $fullPath = storage_path('app/public/' . $filePath);
+
+            // Создаем директорию
+            if (!file_exists(storage_path('app/public/certificates'))) {
+                mkdir(storage_path('app/public/certificates'), 0755, true);
+            }
+
+            $file->move(dirname($fullPath), basename($fullPath));
+
+            $person->update([
+                'certificates_file' => $filename,
+                'certificates_file_original_name' => $file->getClientOriginalName(),
+                'certificates_file_mime_type' => $file->getMimeType(),
+                'certificates_file_size' => filesize($fullPath),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Файл со всеми удостоверениями успешно загружен',
+                'data' => [
+                    'filename' => $filename,
+                    'original_name' => $file->getClientOriginalName(),
+                    'size' => filesize($fullPath)
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Upload certificates file error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при загрузке файла',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Удалить файл со всеми удостоверениями
+     */
+    public function deleteCertificatesFile(string $id)
+    {
+        try {
+            $person = People::find($id);
+            if (!$person) {
+                return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
+            }
+
+            if ($person->certificates_file && file_exists(storage_path('app/public/certificates/' . $person->certificates_file))) {
+                unlink(storage_path('app/public/certificates/' . $person->certificates_file));
+            }
+
+            $person->update([
+                'certificates_file' => null,
+                'certificates_file_original_name' => null,
+                'certificates_file_mime_type' => null,
+                'certificates_file_size' => null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Файл со всеми удостоверениями успешно удален'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Delete certificates file error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при удалении файла',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Загрузить фото
+     */
+    public function uploadPhoto(Request $request, string $id)
+    {
+        try {
+            $person = People::find($id);
+            if (!$person) {
+                return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'photo' => 'required|file|mimes:jpeg,png,jpg,gif|max:2048', // 2MB
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка валидации',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Удаляем старое фото
+            if ($person->photo && file_exists(storage_path('app/public/photos/' . $person->photo))) {
+                unlink(storage_path('app/public/photos/' . $person->photo));
+            }
+
+            $file = $request->file('photo');
+            $filename = time() . '_photo.' . $file->getClientOriginalExtension();
+            $filePath = 'photos/' . $filename;
+            $fullPath = storage_path('app/public/' . $filePath);
+
+            // Создаем директорию
+            if (!file_exists(storage_path('app/public/photos'))) {
+                mkdir(storage_path('app/public/photos'), 0755, true);
+            }
+
+            $file->move(dirname($fullPath), basename($fullPath));
+
+            $person->update(['photo' => $filename]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Фото успешно загружено',
+                'data' => ['filename' => $filename]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Upload photo error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при загрузке фото',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Удалить фото
+     */
+    public function deletePhoto(string $id)
+    {
+        try {
+            $person = People::find($id);
+            if (!$person) {
+                return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
+            }
+
+            if ($person->photo && file_exists(storage_path('app/public/photos/' . $person->photo))) {
+                unlink(storage_path('app/public/photos/' . $person->photo));
+            }
+
+            $person->update(['photo' => null]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Фото успешно удалено'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Delete photo error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при удалении фото',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Загрузить 1 страницу паспорта
+     */
+    public function uploadPassportPage1(Request $request, string $id)
+    {
+        try {
+            $person = People::find($id);
+            if (!$person) {
+                return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'passport_page_1' => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120', // 5MB
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка валидации',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Удаляем старый файл
+            if ($person->passport_page_1 && file_exists(storage_path('app/public/passports/' . $person->passport_page_1))) {
+                unlink(storage_path('app/public/passports/' . $person->passport_page_1));
+            }
+
+            $file = $request->file('passport_page_1');
+            $filename = time() . '_passport_page_1.' . $file->getClientOriginalExtension();
+            $filePath = 'passports/' . $filename;
+            $fullPath = storage_path('app/public/' . $filePath);
+
+            // Создаем директорию
+            if (!file_exists(storage_path('app/public/passports'))) {
+                mkdir(storage_path('app/public/passports'), 0755, true);
+            }
+
+            $file->move(dirname($fullPath), basename($fullPath));
+
+            $person->update(['passport_page_1' => $filename]);
+
+            return response()->json([
+                'success' => true,
+                'message' => '1 страница паспорта успешно загружена',
+                'data' => ['filename' => $filename]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Upload passport page 1 error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при загрузке файла',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Удалить 1 страницу паспорта
+     */
+    public function deletePassportPage1(string $id)
+    {
+        try {
+            $person = People::find($id);
+            if (!$person) {
+                return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
+            }
+
+            if ($person->passport_page_1 && file_exists(storage_path('app/public/passports/' . $person->passport_page_1))) {
+                unlink(storage_path('app/public/passports/' . $person->passport_page_1));
+            }
+
+            $person->update(['passport_page_1' => null]);
+
+            return response()->json([
+                'success' => true,
+                'message' => '1 страница паспорта успешно удалена'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Delete passport page 1 error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при удалении файла',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Загрузить 5 страницу паспорта
+     */
+    public function uploadPassportPage5(Request $request, string $id)
+    {
+        try {
+            $person = People::find($id);
+            if (!$person) {
+                return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'passport_page_5' => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120', // 5MB
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка валидации',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Удаляем старый файл
+            if ($person->passport_page_5 && file_exists(storage_path('app/public/passports/' . $person->passport_page_5))) {
+                unlink(storage_path('app/public/passports/' . $person->passport_page_5));
+            }
+
+            $file = $request->file('passport_page_5');
+            $filename = time() . '_passport_page_5.' . $file->getClientOriginalExtension();
+            $filePath = 'passports/' . $filename;
+            $fullPath = storage_path('app/public/' . $filePath);
+
+            // Создаем директорию
+            if (!file_exists(storage_path('app/public/passports'))) {
+                mkdir(storage_path('app/public/passports'), 0755, true);
+            }
+
+            $file->move(dirname($fullPath), basename($fullPath));
+
+            $person->update(['passport_page_5' => $filename]);
+
+            return response()->json([
+                'success' => true,
+                'message' => '5 страница паспорта успешно загружена',
+                'data' => ['filename' => $filename]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Upload passport page 5 error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при загрузке файла',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Удалить 5 страницу паспорта
+     */
+    public function deletePassportPage5(string $id)
+    {
+        try {
+            $person = People::find($id);
+            if (!$person) {
+                return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
+            }
+
+            if ($person->passport_page_5 && file_exists(storage_path('app/public/passports/' . $person->passport_page_5))) {
+                unlink(storage_path('app/public/passports/' . $person->passport_page_5));
+            }
+
+            $person->update(['passport_page_5' => null]);
+
+            return response()->json([
+                'success' => true,
+                'message' => '5 страница паспорта успешно удалена'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Delete passport page 5 error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при удалении файла',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
