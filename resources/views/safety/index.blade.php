@@ -904,20 +904,37 @@
 
          // Загрузить информацию о файлах человека
          function loadPersonFiles(personId) {
+             // Сначала пробуем через API
              fetch(`/api/people/${personId}`, {
                  headers: {
                      'Authorization': 'Bearer ' + getApiToken(),
                      'Content-Type': 'application/json'
                  }
              })
-             .then(response => response.json())
+             .then(response => {
+                 if (response.ok) {
+                     return response.json();
+                 } else {
+                     // Если API не работает, используем веб-маршрут
+                     return fetch(`/safety/person-files/${personId}`, {
+                         headers: {
+                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                             'Content-Type': 'application/json'
+                         }
+                     }).then(response => response.json());
+                 }
+             })
              .then(data => {
                  if (data.success) {
                      displayCurrentFiles(data.data);
+                 } else {
+                     console.error('Error loading person files:', data.message);
                  }
              })
              .catch(error => {
                  console.error('Error loading person files:', error);
+                 // Показываем заглушку если не удалось загрузить
+                 displayCurrentFiles({});
              });
          }
 
@@ -1016,16 +1033,16 @@
              }
 
              const endpoints = {
-                 'photo': `/api/people/${personId}/photo`,
-                 'passport_page_1': `/api/people/${personId}/passport-page-1`,
-                 'passport_page_5': `/api/people/${personId}/passport-page-5`,
-                 'certificates_file': `/api/people/${personId}/certificates-file`
+                 'photo': `/safety/delete-photo/${personId}`,
+                 'passport_page_1': `/safety/delete-passport-page-1/${personId}`,
+                 'passport_page_5': `/safety/delete-passport-page-5/${personId}`,
+                 'certificates_file': `/safety/delete-certificates-file/${personId}`
              };
 
              fetch(endpoints[fileType], {
                  method: 'DELETE',
                  headers: {
-                     'Authorization': 'Bearer ' + getApiToken(),
+                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                      'Content-Type': 'application/json'
                  }
              })
@@ -1049,10 +1066,16 @@
              });
          }
 
-         // Получить API токен (заглушка - в реальном приложении нужно получать из localStorage или другого места)
+         // Получить API токен из мета-тега или localStorage
          function getApiToken() {
-             // В реальном приложении здесь должен быть токен
-             return 'your-api-token-here';
+             // Пробуем получить из localStorage
+             let token = localStorage.getItem('api_token');
+             if (token) {
+                 return token;
+             }
+             
+             // Если нет в localStorage, используем заглушку для тестирования
+             return 'test-token';
          }
 
          function showEditCertificateModal(id, name, description, expiryDate) {

@@ -39,6 +39,15 @@ Route::post('/safety/update-certificate-info/{id}', [SafetyController::class, 'u
 
     // Скачать резервную копию БД
     Route::get('/safety/backup', [BackupController::class, 'download'])->name('safety.backup');
+    
+    // Получить информацию о файлах человека
+    Route::get('/safety/person-files/{id}', [SafetyController::class, 'getPersonFiles'])->name('safety.person-files');
+    
+    // Удаление файлов
+    Route::delete('/safety/delete-photo/{id}', [SafetyController::class, 'deletePhoto'])->name('safety.delete-photo');
+    Route::delete('/safety/delete-passport-page-1/{id}', [SafetyController::class, 'deletePassportPage1'])->name('safety.delete-passport-page-1');
+    Route::delete('/safety/delete-passport-page-5/{id}', [SafetyController::class, 'deletePassportPage5'])->name('safety.delete-passport-page-5');
+    Route::delete('/safety/delete-certificates-file/{id}', [SafetyController::class, 'deleteCertificatesFile'])->name('safety.delete-certificates-file');
 
     // Маршруты для управления API токенами
     Route::resource('api-tokens', ApiTokenController::class);

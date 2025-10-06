@@ -13,6 +13,183 @@ use Illuminate\Support\Facades\DB;
 class SafetyController extends Controller
 {
     /**
+     * Получить информацию о файлах человека
+     */
+    public function getPersonFiles($id)
+    {
+        try {
+            $person = People::find($id);
+            
+            if (!$person) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Человек не найден'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $person->id,
+                    'photo' => $person->photo,
+                    'photo_original_name' => $person->photo_original_name,
+                    'passport_page_1' => $person->passport_page_1,
+                    'passport_page_1_original_name' => $person->passport_page_1_original_name,
+                    'passport_page_5' => $person->passport_page_5,
+                    'passport_page_5_original_name' => $person->passport_page_5_original_name,
+                    'certificates_file' => $person->certificates_file,
+                    'certificates_file_original_name' => $person->certificates_file_original_name,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Get person files error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при получении информации о файлах',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Удалить фото
+     */
+    public function deletePhoto($id)
+    {
+        try {
+            $person = People::find($id);
+            if (!$person) {
+                return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
+            }
+
+            if ($person->photo && file_exists(storage_path('app/public/photos/' . $person->photo))) {
+                unlink(storage_path('app/public/photos/' . $person->photo));
+            }
+
+            $person->update(['photo' => null]);
+            $this->clearPeopleCache();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Фото успешно удалено'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Delete photo error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при удалении фото',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Удалить 1 страницу паспорта
+     */
+    public function deletePassportPage1($id)
+    {
+        try {
+            $person = People::find($id);
+            if (!$person) {
+                return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
+            }
+
+            if ($person->passport_page_1 && file_exists(storage_path('app/public/passports/' . $person->passport_page_1))) {
+                unlink(storage_path('app/public/passports/' . $person->passport_page_1));
+            }
+
+            $person->update(['passport_page_1' => null]);
+            $this->clearPeopleCache();
+
+            return response()->json([
+                'success' => true,
+                'message' => '1 страница паспорта успешно удалена'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Delete passport page 1 error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при удалении файла',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Удалить 5 страницу паспорта
+     */
+    public function deletePassportPage5($id)
+    {
+        try {
+            $person = People::find($id);
+            if (!$person) {
+                return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
+            }
+
+            if ($person->passport_page_5 && file_exists(storage_path('app/public/passports/' . $person->passport_page_5))) {
+                unlink(storage_path('app/public/passports/' . $person->passport_page_5));
+            }
+
+            $person->update(['passport_page_5' => null]);
+            $this->clearPeopleCache();
+
+            return response()->json([
+                'success' => true,
+                'message' => '5 страница паспорта успешно удалена'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Delete passport page 5 error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при удалении файла',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Удалить файл со всеми удостоверениями
+     */
+    public function deleteCertificatesFile($id)
+    {
+        try {
+            $person = People::find($id);
+            if (!$person) {
+                return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
+            }
+
+            if ($person->certificates_file && file_exists(storage_path('app/public/certificates/' . $person->certificates_file))) {
+                unlink(storage_path('app/public/certificates/' . $person->certificates_file));
+            }
+
+            $person->update([
+                'certificates_file' => null,
+                'certificates_file_original_name' => null,
+                'certificates_file_mime_type' => null,
+                'certificates_file_size' => null,
+            ]);
+            $this->clearPeopleCache();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Файл со всеми удостоверениями успешно удален'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Delete certificates file error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при удалении файла',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Очистить кэш людей - принудительная очистка всех кэшей
      */
     private function clearPeopleCache()
