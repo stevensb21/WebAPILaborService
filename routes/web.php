@@ -16,7 +16,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Маршруты для охраны труда (требуют аутентификации)
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'upload.limits'])->group(function () {
     Route::get('/safety', [SafetyController::class, 'index'])->name('safety.index');
 Route::post('/safety/update-certificate/{peopleId}/{certificateId}', [SafetyController::class, 'updateCertificate'])->name('safety.update-certificate');
 Route::post('/safety/store-person', [SafetyController::class, 'storePerson'])->name('safety.store-person');

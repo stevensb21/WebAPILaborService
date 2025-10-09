@@ -16,11 +16,11 @@ class IncreaseUploadLimits
     public function handle(Request $request, Closure $next): Response
     {
         // Увеличиваем лимиты загрузки файлов
-        ini_set('upload_max_filesize', '50M');
-        ini_set('post_max_size', '50M');
-        ini_set('max_execution_time', 300);
-        ini_set('max_input_time', 300);
-        ini_set('memory_limit', '256M');
+        ini_set('upload_max_filesize', '200M');
+        ini_set('post_max_size', '200M');
+        ini_set('max_execution_time', 600);
+        ini_set('max_input_time', 600);
+        ini_set('memory_limit', '1024M');
         
         return $next($request);
     }
