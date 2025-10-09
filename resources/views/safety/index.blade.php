@@ -904,31 +904,26 @@
 
          // Загрузить информацию о файлах человека
          function loadPersonFiles(personId) {
-             // Сначала пробуем через API
-             fetch(`/api/people/${personId}`, {
+             // Используем веб-маршрут (не требует API токена)
+             fetch(`/safety/person-files/${personId}`, {
                  headers: {
-                     'Authorization': 'Bearer ' + getApiToken(),
-                     'Content-Type': 'application/json'
+                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                     'Content-Type': 'application/json',
+                     'Accept': 'application/json'
                  }
              })
              .then(response => {
-                 if (response.ok) {
-                     return response.json();
-                 } else {
-                     // Если API не работает, используем веб-маршрут
-                     return fetch(`/safety/person-files/${personId}`, {
-                         headers: {
-                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                             'Content-Type': 'application/json'
-                         }
-                     }).then(response => response.json());
+                 if (!response.ok) {
+                     throw new Error(`HTTP error! status: ${response.status}`);
                  }
+                 return response.json();
              })
              .then(data => {
                  if (data.success) {
                      displayCurrentFiles(data.data);
                  } else {
                      console.error('Error loading person files:', data.message);
+                     displayCurrentFiles({});
                  }
              })
              .catch(error => {
