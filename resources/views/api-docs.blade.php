@@ -159,6 +159,129 @@ curl -X POST \
                                     </div>
                                 </div>
 
+                                <hr class="my-5">
+                                <h3 class="mb-4"><i class="fas fa-file text-info me-2"></i>Работа с файлами</h3>
+
+                                <!-- Загрузить файл "Все удостоверения" -->
+                                <div class="endpoint method-post">
+                                    <h4><span class="badge bg-warning me-2">POST</span>/api/people/{id}/certificates-file</h4>
+                                    <p>Загрузить файл со всеми удостоверениями для человека</p>
+                                    <div class="code-block">
+curl -X POST \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -F "certificates_file=@/path/to/file.pdf" \
+  {{ url('/api/people/1/certificates-file') }}
+                                    </div>
+                                    <h6>Ответ:</h6>
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Файл со всеми удостоверениями успешно загружен",
+  "data": {
+    "certificates_file": "generated_filename.pdf",
+    "certificates_file_original_name": "file.pdf",
+    "certificates_file_mime_type": "application/pdf",
+    "certificates_file_size": 1024000
+  }
+}</code></pre>
+                                </div>
+
+                                <!-- Скачать файл "Все удостоверения" -->
+                                <div class="endpoint method-get">
+                                    <h4><span class="badge bg-success me-2">GET</span>/api/people/{id}/certificates-file</h4>
+                                    <p>Скачать файл со всеми удостоверениями</p>
+                                    <div class="code-block">
+curl -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -o downloaded_file.pdf \
+  {{ url('/api/people/1/certificates-file') }}
+                                    </div>
+                                    <p class="mt-2"><strong>Примечание:</strong> Этот эндпоинт возвращает файл напрямую для скачивания.</p>
+                                </div>
+
+                                <!-- Удалить файл "Все удостоверения" -->
+                                <div class="endpoint method-delete">
+                                    <h4><span class="badge bg-danger me-2">DELETE</span>/api/people/{id}/certificates-file</h4>
+                                    <p>Удалить файл со всеми удостоверениями</p>
+                                    <div class="code-block">
+curl -X DELETE \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  {{ url('/api/people/1/certificates-file') }}
+                                    </div>
+                                    <h6>Ответ:</h6>
+                                    <pre><code class="language-json">{
+  "success": true,
+  "message": "Файл со всеми удостоверениями успешно удален"
+}</code></pre>
+                                </div>
+
+                                <!-- Загрузить фото -->
+                                <div class="endpoint method-post">
+                                    <h4><span class="badge bg-warning me-2">POST</span>/api/people/{id}/photo</h4>
+                                    <p>Загрузить фото человека</p>
+                                    <div class="code-block">
+curl -X POST \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -F "photo=@/path/to/photo.jpg" \
+  {{ url('/api/people/1/photo') }}
+                                    </div>
+                                </div>
+
+                                <!-- Удалить фото -->
+                                <div class="endpoint method-delete">
+                                    <h4><span class="badge bg-danger me-2">DELETE</span>/api/people/{id}/photo</h4>
+                                    <p>Удалить фото человека</p>
+                                    <div class="code-block">
+curl -X DELETE \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  {{ url('/api/people/1/photo') }}
+                                    </div>
+                                </div>
+
+                                <!-- Загрузить паспорт (1 стр) -->
+                                <div class="endpoint method-post">
+                                    <h4><span class="badge bg-warning me-2">POST</span>/api/people/{id}/passport-page-1</h4>
+                                    <p>Загрузить 1 страницу паспорта</p>
+                                    <div class="code-block">
+curl -X POST \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -F "passport_page_1=@/path/to/passport1.jpg" \
+  {{ url('/api/people/1/passport-page-1') }}
+                                    </div>
+                                </div>
+
+                                <!-- Удалить паспорт (1 стр) -->
+                                <div class="endpoint method-delete">
+                                    <h4><span class="badge bg-danger me-2">DELETE</span>/api/people/{id}/passport-page-1</h4>
+                                    <p>Удалить 1 страницу паспорта</p>
+                                    <div class="code-block">
+curl -X DELETE \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  {{ url('/api/people/1/passport-page-1') }}
+                                    </div>
+                                </div>
+
+                                <!-- Загрузить паспорт (5 стр) -->
+                                <div class="endpoint method-post">
+                                    <h4><span class="badge bg-warning me-2">POST</span>/api/people/{id}/passport-page-5</h4>
+                                    <p>Загрузить 5 страницу паспорта</p>
+                                    <div class="code-block">
+curl -X POST \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -F "passport_page_5=@/path/to/passport5.jpg" \
+  {{ url('/api/people/1/passport-page-5') }}
+                                    </div>
+                                </div>
+
+                                <!-- Удалить паспорт (5 стр) -->
+                                <div class="endpoint method-delete">
+                                    <h4><span class="badge bg-danger me-2">DELETE</span>/api/people/{id}/passport-page-5</h4>
+                                    <p>Удалить 5 страницу паспорта</p>
+                                    <div class="code-block">
+curl -X DELETE \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  {{ url('/api/people/1/passport-page-5') }}
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
 

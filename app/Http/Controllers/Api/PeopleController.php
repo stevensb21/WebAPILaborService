@@ -919,6 +919,47 @@ class PeopleController extends Controller
     /**
      * Удалить файл со всеми удостоверениями
      */
+    /**
+     * Скачать файл со всеми удостоверениями
+     */
+    public function downloadCertificatesFile(string $id)
+    {
+        try {
+            $person = People::find($id);
+            if (!$person) {
+                return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
+            }
+
+            if (!$person->certificates_file) {
+                return response()->json(['success' => false, 'message' => 'Файл удостоверений не найден'], 404);
+            }
+
+            $filePath = storage_path('app/public/certificates/' . $person->certificates_file);
+            
+            if (!file_exists($filePath)) {
+                return response()->json(['success' => false, 'message' => 'Физический файл не найден'], 404);
+            }
+
+            $originalName = $person->certificates_file_original_name ?? $person->certificates_file;
+            $mimeType = $person->certificates_file_mime_type ?? 'application/octet-stream';
+
+            return response()->download($filePath, $originalName, [
+                'Content-Type' => $mimeType,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Download certificates file error: ' . $e->getMessage(), [
+                'person_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при скачивании файла',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function deleteCertificatesFile(string $id)
     {
         try {

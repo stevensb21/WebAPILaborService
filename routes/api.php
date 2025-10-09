@@ -37,6 +37,7 @@ Route::prefix('people')->group(function () {
     
     // File management routes
     Route::post('/{id}/certificates-file', [PeopleController::class, 'uploadCertificatesFile']);
+    Route::get('/{id}/certificates-file', [PeopleController::class, 'downloadCertificatesFile']);
     Route::delete('/{id}/certificates-file', [PeopleController::class, 'deleteCertificatesFile']);
     Route::post('/{id}/photo', [PeopleController::class, 'uploadPhoto']);
     Route::delete('/{id}/photo', [PeopleController::class, 'deletePhoto']);
