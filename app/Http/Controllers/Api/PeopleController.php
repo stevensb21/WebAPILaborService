@@ -934,7 +934,14 @@ class PeopleController extends Controller
                 return response()->json(['success' => false, 'message' => 'Файл удостоверений не найден'], 404);
             }
 
-            $filePath = storage_path('app/public/certificates/' . $person->certificates_file);
+            // Проверяем, есть ли уже префикс certificates/ в пути
+            $relativePath = $person->certificates_file;
+            if (strpos($relativePath, 'certificates/') !== 0) {
+                // Старый формат без префикса - добавляем
+                $relativePath = 'certificates/' . $relativePath;
+            }
+            
+            $filePath = storage_path('app/public/' . $relativePath);
             
             if (!file_exists($filePath)) {
                 return response()->json(['success' => false, 'message' => 'Физический файл не найден'], 404);
@@ -968,8 +975,19 @@ class PeopleController extends Controller
                 return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
             }
 
-            if ($person->certificates_file && file_exists(storage_path('app/public/certificates/' . $person->certificates_file))) {
-                unlink(storage_path('app/public/certificates/' . $person->certificates_file));
+            if ($person->certificates_file) {
+                // Проверяем, есть ли уже префикс certificates/ в пути
+                $relativePath = $person->certificates_file;
+                if (strpos($relativePath, 'certificates/') !== 0) {
+                    // Старый формат без префикса - добавляем
+                    $relativePath = 'certificates/' . $relativePath;
+                }
+                
+                $filePath = storage_path('app/public/' . $relativePath);
+                
+                if (file_exists($filePath)) {
+                    unlink($filePath);
+                }
             }
 
             $person->update([
