@@ -1076,8 +1076,33 @@ class PeopleController extends Controller
      */
     private function mergePdfFiles(array $filePaths, string $outputPath)
     {
-        // Используем простой метод объединения через file_get_contents
-        // Для более сложной логики можно использовать библиотеку TCPDF или FPDI
+        // Используем команду pdftk для правильного объединения PDF
+        // Если pdftk недоступен, используем fallback метод
+        
+        $inputFiles = implode(' ', array_map('escapeshellarg', $filePaths));
+        $outputFile = escapeshellarg($outputPath);
+        
+        // Пробуем использовать pdftk
+        $command = "pdftk {$inputFiles} cat output {$outputFile}";
+        $output = [];
+        $returnCode = 0;
+        
+        exec($command, $output, $returnCode);
+        
+        if ($returnCode === 0 && file_exists($outputPath)) {
+            Log::info('PDF merge successful using pdftk', [
+                'command' => $command,
+                'output' => $output
+            ]);
+            return;
+        }
+        
+        // Fallback: используем простой метод (может не работать корректно)
+        Log::warning('pdftk failed, using fallback method', [
+            'command' => $command,
+            'return_code' => $returnCode,
+            'output' => $output
+        ]);
         
         $mergedContent = '';
         
