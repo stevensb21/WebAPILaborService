@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\People;
 use App\Models\Certificate;
 use App\Models\PeopleCertificate;
+use App\Models\ApiToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -12,6 +13,27 @@ use Illuminate\Support\Facades\DB;
 
 class SafetyController extends Controller
 {
+    /**
+     * Получить или создать API токен для веб-интерфейса
+     */
+    private function getWebApiToken()
+    {
+        // Ищем существующий токен для веб-интерфейса
+        $webToken = ApiToken::where('name', 'Web Interface')
+            ->where('is_active', true)
+            ->first();
+            
+        if (!$webToken) {
+            // Создаем новый токен для веб-интерфейса
+            $webToken = ApiToken::createToken(
+                'Web Interface',
+                'Автоматически созданный токен для веб-интерфейса',
+                null // Без срока действия
+            );
+        }
+        
+        return $webToken->token;
+    }
     /**
      * Получить информацию о файлах человека
      */
@@ -340,7 +362,10 @@ class SafetyController extends Controller
                 'sql_bindings' => $query->getBindings()
             ]);
 
-            return view('safety.index', compact('people', 'certificates', 'positions'));
+            // Получаем API токен для веб-интерфейса
+            $apiToken = $this->getWebApiToken();
+            
+            return view('safety.index', compact('people', 'certificates', 'positions', 'apiToken'));
         } catch (\Exception $e) {
             \Log::error('SafetyController::index exception:', [
                 'message' => $e->getMessage(),

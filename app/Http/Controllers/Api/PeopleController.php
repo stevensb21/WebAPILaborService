@@ -925,6 +925,14 @@ class PeopleController extends Controller
     public function mergeCertificatesFile(Request $request, string $id)
     {
         try {
+            // Отладочная информация о токене
+            $authHeader = $request->header('Authorization');
+            Log::info('Merge certificates request', [
+                'person_id' => $id,
+                'auth_header' => $authHeader ? substr($authHeader, 0, 20) . '...' : 'No auth header',
+                'has_file' => $request->hasFile('new_file')
+            ]);
+            
             $person = People::find($id);
             if (!$person) {
                 return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);

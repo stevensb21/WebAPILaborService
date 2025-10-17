@@ -1103,11 +1103,18 @@
              // Пробуем получить из localStorage
              let token = localStorage.getItem('api_token');
              if (token) {
+                 console.log('Using token from localStorage:', token.substring(0, 10) + '...');
                  return token;
              }
              
-             // Если нет в localStorage, используем заглушку для тестирования
-             return 'test-token';
+             // Используем токен, переданный с сервера
+             @if(isset($apiToken))
+                 console.log('Using server token:', '{{ $apiToken }}'.substring(0, 10) + '...');
+                 return '{{ $apiToken }}';
+             @else
+                 console.log('Using fallback test token');
+                 return 'test-token';
+             @endif
          }
 
          // Показать модальное окно объединения файлов сертификатов
@@ -1138,15 +1145,27 @@
              submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Объединение...';
              submitBtn.disabled = true;
              
+             const token = getApiToken();
+             console.log('Making merge request with token:', token.substring(0, 10) + '...');
+             
              fetch(`/api/people/${personId}/certificates-file/merge`, {
                  method: 'POST',
                  headers: {
-                     'Authorization': 'Bearer ' + getApiToken(),
+                     'Authorization': 'Bearer ' + token,
                  },
                  body: formData
              })
-             .then(response => response.json())
+             .then(response => {
+                 console.log('Merge response status:', response.status);
+                 if (!response.ok) {
+                     return response.json().then(errorData => {
+                         throw new Error(`HTTP ${response.status}: ${errorData.message || 'Unknown error'}`);
+                     });
+                 }
+                 return response.json();
+             })
              .then(data => {
+                 console.log('Merge response data:', data);
                  if (data.success) {
                      alert('Файлы успешно объединены!');
                      // Закрываем модальное окно
@@ -1159,7 +1178,7 @@
              })
              .catch(error => {
                  console.error('Error merging files:', error);
-                 alert('Ошибка при объединении файлов');
+                 alert('Ошибка при объединении файлов: ' + error.message);
              })
              .finally(() => {
                  // Восстанавливаем кнопку
