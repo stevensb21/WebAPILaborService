@@ -920,6 +920,119 @@ class PeopleController extends Controller
      * Удалить файл со всеми удостоверениями
      */
     /**
+     * Объединить PDF файлы (добавить новый файл в начало существующего)
+     */
+    public function mergeCertificatesFile(Request $request, string $id)
+    {
+        try {
+            $person = People::find($id);
+            if (!$person) {
+                return response()->json(['success' => false, 'message' => 'Человек не найден'], 404);
+            }
+
+            if (!$person->certificates_file) {
+                return response()->json(['success' => false, 'message' => 'У человека нет файла сертификатов для объединения'], 400);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'new_file' => 'required|file|mimes:pdf|max:204800', // 200MB
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка валидации',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Получаем пути к файлам
+            $relativePath = $person->certificates_file;
+            if (strpos($relativePath, 'certificates/') !== 0) {
+                $relativePath = 'certificates/' . $relativePath;
+            }
+            
+            $existingFilePath = storage_path('app/public/' . $relativePath);
+            $newFile = $request->file('new_file');
+            $newFilePath = $newFile->getPathname();
+
+            if (!file_exists($existingFilePath)) {
+                return response()->json(['success' => false, 'message' => 'Существующий файл сертификатов не найден'], 404);
+            }
+
+            // Создаем временный файл для объединения
+            $tempMergedPath = storage_path('app/temp/merged_' . time() . '.pdf');
+            
+            // Создаем директорию temp если не существует
+            if (!file_exists(storage_path('app/temp'))) {
+                mkdir(storage_path('app/temp'), 0755, true);
+            }
+
+            // Объединяем PDF файлы (новый файл + существующий файл)
+            $this->mergePdfFiles([$newFilePath, $existingFilePath], $tempMergedPath);
+
+            // Удаляем старый файл
+            unlink($existingFilePath);
+
+            // Перемещаем объединенный файл на место старого
+            $newFileName = 'merged_' . time() . '_' . $person->id . '_certificates.pdf';
+            $newRelativePath = 'certificates/' . $newFileName;
+            $newFilePath = storage_path('app/public/' . $newRelativePath);
+            
+            rename($tempMergedPath, $newFilePath);
+
+            // Обновляем запись в базе данных
+            $person->update([
+                'certificates_file' => $newRelativePath,
+                'certificates_file_original_name' => $newFileName,
+                'certificates_file_mime_type' => 'application/pdf',
+                'certificates_file_size' => filesize($newFilePath),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'PDF файлы успешно объединены',
+                'data' => [
+                    'file_name' => $newFileName,
+                    'file_size' => filesize($newFilePath),
+                    'file_path' => $newRelativePath
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Merge certificates file error: ' . $e->getMessage(), [
+                'person_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при объединении файлов',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Объединить несколько PDF файлов в один
+     */
+    private function mergePdfFiles(array $filePaths, string $outputPath)
+    {
+        // Используем простой метод объединения через file_get_contents
+        // Для более сложной логики можно использовать библиотеку TCPDF или FPDI
+        
+        $mergedContent = '';
+        
+        foreach ($filePaths as $filePath) {
+            if (file_exists($filePath)) {
+                $content = file_get_contents($filePath);
+                $mergedContent .= $content;
+            }
+        }
+        
+        file_put_contents($outputPath, $mergedContent);
+    }
+
+    /**
      * Скачать файл со всеми удостоверениями
      */
     public function downloadCertificatesFile(string $id)

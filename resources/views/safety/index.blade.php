@@ -696,6 +696,40 @@
     <!-- Модальное окно для изменения порядка сертификатов -->
     @include('safety.certificate-order-modal')
 
+    <!-- Модальное окно объединения файлов сертификатов -->
+    <div class="modal fade" id="mergeCertificatesModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить к файлу сертификатов</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="mergeCertificatesForm">
+                    <div class="modal-body">
+                        <input type="hidden" id="merge_person_id" name="person_id">
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            Новый PDF файл будет добавлен в начало существующего файла сертификатов.
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="merge_new_file" class="form-label">Новый PDF файл *</label>
+                            <input type="file" class="form-control" id="merge_new_file" name="new_file" accept=".pdf" required>
+                            <small class="form-text text-muted">Поддерживаемый формат: PDF. Максимальный размер: 200MB</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Добавить к файлу
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script>
@@ -1005,6 +1039,9 @@
                              <span>Удостоверения: ${person.certificates_file_original_name || person.certificates_file}</span>
                          </div>
                          <div>
+                             <button class="btn btn-sm btn-outline-success me-1" onclick="showMergeCertificatesModal(${person.id})" title="Добавить к существующему файлу">
+                                 <i class="fas fa-plus"></i>
+                             </button>
                              <button class="btn btn-sm btn-outline-danger" onclick="deleteFile(${person.id}, 'certificates_file')">
                                  <i class="fas fa-trash"></i>
                              </button>
@@ -1072,6 +1109,64 @@
              // Если нет в localStorage, используем заглушку для тестирования
              return 'test-token';
          }
+
+         // Показать модальное окно объединения файлов сертификатов
+         function showMergeCertificatesModal(personId) {
+             document.getElementById('merge_person_id').value = personId;
+             document.getElementById('merge_new_file').value = '';
+             new bootstrap.Modal(document.getElementById('mergeCertificatesModal')).show();
+         }
+
+         // Обработчик формы объединения файлов
+         document.getElementById('mergeCertificatesForm').addEventListener('submit', function(e) {
+             e.preventDefault();
+             
+             const personId = document.getElementById('merge_person_id').value;
+             const fileInput = document.getElementById('merge_new_file');
+             
+             if (!fileInput.files[0]) {
+                 alert('Пожалуйста, выберите PDF файл');
+                 return;
+             }
+             
+             const formData = new FormData();
+             formData.append('new_file', fileInput.files[0]);
+             
+             // Показываем индикатор загрузки
+             const submitBtn = this.querySelector('button[type="submit"]');
+             const originalText = submitBtn.innerHTML;
+             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Объединение...';
+             submitBtn.disabled = true;
+             
+             fetch(`/api/people/${personId}/certificates-file/merge`, {
+                 method: 'POST',
+                 headers: {
+                     'Authorization': 'Bearer ' + getApiToken(),
+                 },
+                 body: formData
+             })
+             .then(response => response.json())
+             .then(data => {
+                 if (data.success) {
+                     alert('Файлы успешно объединены!');
+                     // Закрываем модальное окно
+                     bootstrap.Modal.getInstance(document.getElementById('mergeCertificatesModal')).hide();
+                     // Обновляем информацию о файлах
+                     loadPersonFiles(personId);
+                 } else {
+                     alert('Ошибка: ' + data.message);
+                 }
+             })
+             .catch(error => {
+                 console.error('Error merging files:', error);
+                 alert('Ошибка при объединении файлов');
+             })
+             .finally(() => {
+                 // Восстанавливаем кнопку
+                 submitBtn.innerHTML = originalText;
+                 submitBtn.disabled = false;
+             });
+         });
 
          function showEditCertificateModal(id, name, description, expiryDate) {
              document.getElementById('edit_certificate_id').value = id;
