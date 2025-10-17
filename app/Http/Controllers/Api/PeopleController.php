@@ -848,6 +848,9 @@ class PeopleController extends Controller
             
             // Логируем информацию о файле
             Log::info('File upload details', [
+                'person_id' => $id,
+                'person_name' => $person->full_name,
+                'sanitized_name' => $sanitizedName,
                 'file_exists' => $file ? 'yes' : 'no',
                 'is_valid' => $file ? $file->isValid() : 'no file',
                 'original_name' => $file ? $file->getClientOriginalName() : 'no file',
@@ -869,7 +872,9 @@ class PeopleController extends Controller
                 ], 422);
             }
             
-            $filename = time() . '_certificates_file.' . $file->getClientOriginalExtension();
+            // Создаем имя файла на основе ФИО человека
+            $sanitizedName = $this->sanitizeFileName($person->full_name);
+            $filename = $sanitizedName . '_certificates.' . $file->getClientOriginalExtension();
             $filePath = 'certificates/' . $filename;
             $fullPath = storage_path('app/public/' . $filePath);
 
@@ -964,6 +969,16 @@ class PeopleController extends Controller
             $newFile = $request->file('new_file');
             $newFilePath = $newFile->getPathname();
 
+            Log::info('File paths for merge', [
+                'person_id' => $id,
+                'original_file_in_db' => $person->certificates_file,
+                'relative_path' => $relativePath,
+                'existing_file_path' => $existingFilePath,
+                'existing_file_exists' => file_exists($existingFilePath),
+                'new_file_path' => $newFilePath,
+                'new_file_exists' => file_exists($newFilePath)
+            ]);
+
             if (!file_exists($existingFilePath)) {
                 return response()->json(['success' => false, 'message' => 'Существующий файл сертификатов не найден'], 404);
             }
@@ -982,19 +997,30 @@ class PeopleController extends Controller
             // Удаляем старый файл
             unlink($existingFilePath);
 
-            // Перемещаем объединенный файл на место старого
-            $newFileName = 'merged_' . time() . '_' . $person->id . '_certificates.pdf';
-            $newRelativePath = 'certificates/' . $newFileName;
-            $newFilePath = storage_path('app/public/' . $newRelativePath);
+            // Создаем имя файла на основе ФИО человека
+            $sanitizedName = $this->sanitizeFileName($person->full_name);
+            $newFileName = $sanitizedName . '_certificates.pdf';
+            $newFilePath = storage_path('app/public/certificates/' . $newFileName);
             
             rename($tempMergedPath, $newFilePath);
 
-            // Обновляем запись в базе данных
+            // Обновляем запись в базе данных (сохраняем только имя файла, без префикса certificates/)
             $person->update([
-                'certificates_file' => $newRelativePath,
+                'certificates_file' => $newFileName,
                 'certificates_file_original_name' => $newFileName,
                 'certificates_file_mime_type' => 'application/pdf',
                 'certificates_file_size' => filesize($newFilePath),
+            ]);
+
+            Log::info('File merge completed', [
+                'person_id' => $id,
+                'person_name' => $person->full_name,
+                'sanitized_name' => $sanitizedName,
+                'new_file_name' => $newFileName,
+                'new_file_path' => $newFilePath,
+                'new_file_exists' => file_exists($newFilePath),
+                'new_file_size' => filesize($newFilePath),
+                'updated_db_record' => $person->fresh()->certificates_file
             ]);
 
             return response()->json([
@@ -1003,7 +1029,7 @@ class PeopleController extends Controller
                 'data' => [
                     'file_name' => $newFileName,
                     'file_size' => filesize($newFilePath),
-                    'file_path' => $newRelativePath
+                    'file_path' => $newFileName
                 ]
             ]);
 
@@ -1018,6 +1044,31 @@ class PeopleController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Очистить имя файла от недопустимых символов
+     */
+    private function sanitizeFileName($name)
+    {
+        // Убираем лишние пробелы и приводим к нижнему регистру
+        $name = trim($name);
+        
+        // Заменяем пробелы на подчеркивания
+        $name = str_replace(' ', '_', $name);
+        
+        // Убираем все символы кроме букв, цифр, подчеркиваний и дефисов
+        $name = preg_replace('/[^a-zA-Zа-яА-Я0-9_-]/u', '', $name);
+        
+        // Ограничиваем длину имени файла (оставляем место для суффикса)
+        $name = substr($name, 0, 50);
+        
+        // Если имя получилось пустым, используем fallback
+        if (empty($name)) {
+            $name = 'certificates';
+        }
+        
+        return $name;
     }
 
     /**
@@ -1063,6 +1114,14 @@ class PeopleController extends Controller
             }
             
             $filePath = storage_path('app/public/' . $relativePath);
+            
+            Log::info('Download certificates file', [
+                'person_id' => $id,
+                'file_in_db' => $person->certificates_file,
+                'relative_path' => $relativePath,
+                'full_file_path' => $filePath,
+                'file_exists' => file_exists($filePath)
+            ]);
             
             if (!file_exists($filePath)) {
                 return response()->json(['success' => false, 'message' => 'Физический файл не найден'], 404);

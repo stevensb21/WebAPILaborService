@@ -969,6 +969,8 @@
 
          // Отобразить текущие файлы
          function displayCurrentFiles(person) {
+             console.log('Displaying current files:', person);
+             
              const filesSection = document.getElementById('currentFilesSection');
              const filesList = document.getElementById('currentFilesList');
              
@@ -1032,11 +1034,15 @@
              // Файл со всеми удостоверениями
              if (person.certificates_file) {
                  hasFiles = true;
+                 // Показываем более понятное имя файла
+                 const displayName = person.certificates_file_original_name || person.certificates_file;
+                 const cleanName = displayName.replace(/_certificates\.pdf$/, '').replace(/_/g, ' ');
+                 
                  filesHtml += `
                      <div class="d-flex align-items-center justify-content-between mb-2 p-2 border rounded">
                          <div class="d-flex align-items-center">
                              <i class="fas fa-certificate text-warning me-2"></i>
-                             <span>Удостоверения: ${person.certificates_file_original_name || person.certificates_file}</span>
+                             <span>Удостоверения: ${cleanName}</span>
                          </div>
                          <div>
                              <button class="btn btn-sm btn-outline-success me-1" onclick="showMergeCertificatesModal(${person.id})" title="Добавить к существующему файлу">
@@ -1171,6 +1177,7 @@
                      // Закрываем модальное окно
                      bootstrap.Modal.getInstance(document.getElementById('mergeCertificatesModal')).hide();
                      // Обновляем информацию о файлах
+                     console.log('Reloading person files after merge...');
                      loadPersonFiles(personId);
                  } else {
                      alert('Ошибка: ' + data.message);
