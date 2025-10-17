@@ -733,9 +733,21 @@ class SafetyController extends Controller
 
     public function downloadCertificatesFile($filename)
     {
+        // Логируем запрос для отладки
+        \Log::info('Download certificates file request', [
+            'filename' => $filename,
+            'requested_path' => storage_path('app/public/certificates/' . $filename)
+        ]);
+        
         $path = storage_path('app/public/certificates/' . $filename);
         
         if (!file_exists($path)) {
+            \Log::error('File not found', [
+                'filename' => $filename,
+                'path' => $path,
+                'directory_exists' => is_dir(dirname($path)),
+                'directory_contents' => is_dir(dirname($path)) ? scandir(dirname($path)) : 'Directory not found'
+            ]);
             abort(404);
         }
         
