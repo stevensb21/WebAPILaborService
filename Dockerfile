@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     python3 \
     python3-pip \
-    && pip3 install PyPDF2 \
+    && pip3 install --break-system-packages PyPDF2 \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         pdo \
