@@ -1082,17 +1082,25 @@ class PeopleController extends Controller
         $inputFiles = implode(' ', array_map('escapeshellarg', $filePaths));
         $outputFile = escapeshellarg($outputPath);
         
-        // Пробуем использовать pdftk
+        // Пробуем использовать pdftk с правильным синтаксисом
         $command = "pdftk {$inputFiles} cat output {$outputFile}";
         $output = [];
         $returnCode = 0;
+        
+        // Добавляем подробное логирование
+        Log::info('Attempting PDF merge with pdftk', [
+            'command' => $command,
+            'input_files' => $filePaths,
+            'output_path' => $outputPath
+        ]);
         
         exec($command, $output, $returnCode);
         
         if ($returnCode === 0 && file_exists($outputPath)) {
             Log::info('PDF merge successful using pdftk', [
                 'command' => $command,
-                'output' => $output
+                'output' => $output,
+                'output_file_size' => file_exists($outputPath) ? filesize($outputPath) : 0
             ]);
             return;
         }
