@@ -20,7 +20,6 @@ storage_backup_*.tar.gz
 # Docker конфигурационные файлы
 docker-compose.yml
 docker-compose.prod.yml
-Dockerfile
 Dockerfile.prod
 nginx.conf
 nginx.prod.conf

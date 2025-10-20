@@ -1076,19 +1076,17 @@ class PeopleController extends Controller
      */
     private function mergePdfFiles(array $filePaths, string $outputPath)
     {
-        // Используем команду pdftk для правильного объединения PDF
-        // Если pdftk недоступен, используем fallback метод
-        
+        // Используем Python скрипт для объединения PDF
         $inputFiles = implode(' ', array_map('escapeshellarg', $filePaths));
         $outputFile = escapeshellarg($outputPath);
         
-        // Пробуем использовать pdftk с правильным синтаксисом
-        $command = "pdftk {$inputFiles} cat output {$outputFile}";
+        // Команда для Python скрипта
+        $command = "python3 /usr/local/bin/merge_pdf.py {$outputFile} {$inputFiles}";
         $output = [];
         $returnCode = 0;
         
         // Добавляем подробное логирование
-        Log::info('Attempting PDF merge with pdftk', [
+        Log::info('Attempting PDF merge with Python', [
             'command' => $command,
             'input_files' => $filePaths,
             'output_path' => $outputPath
@@ -1097,7 +1095,7 @@ class PeopleController extends Controller
         exec($command, $output, $returnCode);
         
         if ($returnCode === 0 && file_exists($outputPath)) {
-            Log::info('PDF merge successful using pdftk', [
+            Log::info('PDF merge successful using Python', [
                 'command' => $command,
                 'output' => $output,
                 'output_file_size' => file_exists($outputPath) ? filesize($outputPath) : 0
@@ -1106,7 +1104,7 @@ class PeopleController extends Controller
         }
         
         // Fallback: используем простой метод (может не работать корректно)
-        Log::warning('pdftk failed, using fallback method', [
+        Log::warning('Python merge failed, using fallback method', [
             'command' => $command,
             'return_code' => $returnCode,
             'output' => $output
