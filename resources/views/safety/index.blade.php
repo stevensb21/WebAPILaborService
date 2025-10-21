@@ -227,7 +227,7 @@
                                                       
                                                       @if($person->certificates_file)
                                                           <br><i class="fas fa-certificate"></i> 
-                                                          <a href="{{ route('safety.certificates-file', $person->certificates_file) }}" 
+                                                          <a href="{{ route('safety.certificates-file', basename($person->certificates_file)) }}" 
                                                              class="text-decoration-none" title="Скачать файл со всеми удостоверениями">
                                                               <i class="fas fa-file-pdf text-danger"></i> Все удостоверения
                                                           </a>
@@ -1692,7 +1692,7 @@
                                  ${data.passport_page_1 ? `<a href="/safety/passport/${data.passport_page_1.split('/').pop()}" class="text-decoration-none" title="Скачать 1 страницу паспорта"><i class="fas fa-download"></i> 1 стр</a>` : ''}
                                  ${data.passport_page_1 && data.passport_page_5 ? ' | ' : ''}
                                  ${data.passport_page_5 ? `<a href="/safety/passport/${data.passport_page_5.split('/').pop()}" class="text-decoration-none" title="Скачать 5 страницу паспорта"><i class="fas fa-download"></i> 5 стр</a>` : ''}
-                                 ${data.certificates_file ? `<br><i class="fas fa-certificate"></i> <a href="/safety/certificates-file/${data.certificates_file}" class="text-decoration-none" title="Скачать файл со всеми удостоверениями" onclick="console.log('Download URL:', '/safety/certificates-file/${data.certificates_file}')"><i class="fas fa-file-pdf text-danger"></i> Все удостоверения</a>` : ''}
+                                 ${data.certificates_file ? `<br><i class="fas fa-certificate"></i> <a href="/safety/certificates-file/${data.certificates_file.split('/').pop()}" class="text-decoration-none" title="Скачать файл со всеми удостоверениями" onclick="console.log('Download URL:', '/safety/certificates-file/${data.certificates_file.split('/').pop()}')"><i class="fas fa-file-pdf text-danger"></i> Все удостоверения</a>` : ''}
                              </div>
                              <div class="mt-1">
                                  <button class="btn btn-sm btn-outline-warning me-1" onclick="showEditPersonModal(${data.id}, '${data.full_name}', '${data.position || ''}', '${data.phone || ''}', '${data.snils || ''}', '${data.inn || ''}', '${data.birth_date || ''}', '${data.address || ''}', '${data.status || ''}')">

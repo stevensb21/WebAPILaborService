@@ -733,6 +733,9 @@ class SafetyController extends Controller
 
     public function downloadCertificatesFile($filename)
     {
+        // Декодируем URL если нужно
+        $filename = urldecode($filename);
+        
         // Логируем запрос для отладки
         \Log::info('Download certificates file request', [
             'filename' => $filename,
@@ -755,7 +758,7 @@ class SafetyController extends Controller
         
         return response($file, 200)
             ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+            ->header('Content-Disposition', 'attachment; filename="' . rawurlencode($filename) . '"');
     }
 
     public function updatePerson(Request $request, $id)
