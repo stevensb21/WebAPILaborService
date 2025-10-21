@@ -758,7 +758,7 @@ class SafetyController extends Controller
         
         return response($file, 200)
             ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'attachment; filename="' . rawurlencode($filename) . '"');
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
     }
 
     public function updatePerson(Request $request, $id)

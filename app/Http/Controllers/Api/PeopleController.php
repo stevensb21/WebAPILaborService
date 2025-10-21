@@ -846,6 +846,9 @@ class PeopleController extends Controller
 
             $file = $request->file('certificates_file');
             
+            // Создаем имя файла на основе ФИО человека
+            $sanitizedName = $this->sanitizeFileName($person->full_name);
+            
             // Логируем информацию о файле
             Log::info('File upload details', [
                 'person_id' => $id,
@@ -873,7 +876,6 @@ class PeopleController extends Controller
             }
             
             // Создаем имя файла на основе ФИО человека
-            $sanitizedName = $this->sanitizeFileName($person->full_name);
             $filename = $sanitizedName . '_certificates.' . $file->getClientOriginalExtension();
             $filePath = 'certificates/' . $filename;
             $fullPath = storage_path('app/public/' . $filePath);
