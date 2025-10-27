@@ -846,6 +846,11 @@ class PeopleController extends Controller
 
             $file = $request->file('certificates_file');
             
+            // Убеждаемся, что имя человека в правильной кодировке UTF-8
+            if (!mb_check_encoding($person->full_name, 'UTF-8')) {
+                $person->full_name = mb_convert_encoding($person->full_name, 'UTF-8', 'auto');
+            }
+            
             // Создаем имя файла на основе ФИО человека
             $sanitizedName = $this->sanitizeFileName($person->full_name);
             
@@ -902,7 +907,8 @@ class PeopleController extends Controller
                 'certificates_file_size' => $file->getSize(),
             ]);
 
-            return response()->json([
+            // Убеждаемся, что все данные в правильной кодировке UTF-8
+            $responseData = [
                 'success' => true,
                 'message' => 'Файл со всеми удостоверениями успешно загружен',
                 'data' => [
@@ -911,7 +917,16 @@ class PeopleController extends Controller
                     'size' => $file->getSize(),
                     'path' => $storedPath
                 ]
-            ]);
+            ];
+            
+            // Проверяем кодировку всех строк в ответе
+            array_walk_recursive($responseData, function(&$value) {
+                if (is_string($value) && !mb_check_encoding($value, 'UTF-8')) {
+                    $value = mb_convert_encoding($value, 'UTF-8', 'auto');
+                }
+            });
+            
+            return response()->json($responseData);
 
         } catch (\Exception $e) {
             Log::error('Upload certificates file error: ' . $e->getMessage());
@@ -1053,7 +1068,7 @@ class PeopleController extends Controller
      */
     private function sanitizeFileName($name)
     {
-        // Убираем лишние пробелы и приводим к нижнему регистру
+        // Убираем лишние пробелы
         $name = trim($name);
         
         // Заменяем пробелы на подчеркивания
@@ -1068,6 +1083,11 @@ class PeopleController extends Controller
         // Если имя получилось пустым, используем fallback
         if (empty($name)) {
             $name = 'certificates';
+        }
+        
+        // Убеждаемся, что строка в правильной кодировке UTF-8
+        if (!mb_check_encoding($name, 'UTF-8')) {
+            $name = mb_convert_encoding($name, 'UTF-8', 'auto');
         }
         
         return $name;
