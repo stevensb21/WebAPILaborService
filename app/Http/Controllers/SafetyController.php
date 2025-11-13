@@ -8,6 +8,8 @@ use App\Models\PeopleCertificate;
 use App\Models\ApiToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpWord\PhpWord;
+use PhpOffice\PhpWord\IOFactory;
 
 
 
@@ -1209,6 +1211,188 @@ class SafetyController extends Controller
                 'success' => false,
                 'message' => 'Ошибка при обновлении порядка: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Экспорт списка людей в Word файл
+     */
+    public function exportToWord(Request $request)
+    {
+        try {
+            // Получаем всех людей (можно добавить фильтры как в index)
+            $query = People::select('id', 'full_name', 'position', 'phone', 'snils', 'inn', 'birth_date', 'status', 'address');
+            
+            // Применяем те же фильтры, что и в index
+            if ($request->filled('search_fio')) {
+                $searchTerm = trim(preg_replace('/\s+/', ' ', $request->search_fio));
+                $query->where('full_name', 'ILIKE', '%' . $searchTerm . '%');
+            }
+            
+            if ($request->filled('search_position')) {
+                $searchTerm = trim(preg_replace('/\s+/', ' ', $request->search_position));
+                $query->where('position', 'ILIKE', '%' . $searchTerm . '%');
+            }
+            
+            if ($request->filled('search_phone')) {
+                $searchTerm = trim(preg_replace('/\s+/', ' ', $request->search_phone));
+                $query->where('phone', 'ILIKE', '%' . $searchTerm . '%');
+            }
+            
+            if ($request->filled('search_status')) {
+                $searchTerm = trim(preg_replace('/\s+/', ' ', $request->search_status));
+                $query->where('status', 'ILIKE', '%' . $searchTerm . '%');
+            }
+            
+            $people = $query->get();
+            
+            // Функция для подсчета недостающих данных
+            $getMissingDataCount = function($person) {
+                $missing = 0;
+                $fields = ['position', 'phone', 'snils', 'inn', 'birth_date', 'address'];
+                foreach ($fields as $field) {
+                    if (empty($person->$field)) {
+                        $missing++;
+                    }
+                }
+                return $missing;
+            };
+            
+            // Добавляем поле с количеством недостающих данных для сортировки
+            $people = $people->map(function($person) use ($getMissingDataCount) {
+                $person->missing_data_count = $getMissingDataCount($person);
+                return $person;
+            });
+            
+            // Сортируем: сначала по статусу, потом по количеству недостающих данных
+            $people = $people->sortBy([
+                ['status', 'asc'],
+                ['missing_data_count', 'asc']
+            ])->values();
+            
+            // Создаем Word документ
+            $phpWord = new PhpWord();
+            $section = $phpWord->addSection([
+                'marginTop' => 1440,
+                'marginBottom' => 1440,
+                'marginLeft' => 1440,
+                'marginRight' => 1440,
+            ]);
+            
+            // Заголовок
+            $section->addText('Список людей', [
+                'bold' => true,
+                'size' => 16,
+                'name' => 'Times New Roman'
+            ], [
+                'alignment' => 'center',
+                'spaceAfter' => 240
+            ]);
+            
+            // Создаем таблицу
+            $table = $section->addTable([
+                'borderSize' => 6,
+                'borderColor' => '000000',
+                'cellMarginTop' => 50,
+                'cellMarginBottom' => 50,
+                'cellMarginLeft' => 50,
+                'cellMarginRight' => 50,
+            ]);
+            
+            // Заголовки таблицы
+            $table->addRow(400);
+            $headers = ['ФИО', 'Должность', 'Телефон', 'СНИЛС', 'ИНН', 'Дата рождения', 'Примечание', 'Статус'];
+            foreach ($headers as $header) {
+                $table->addCell(2000, [
+                    'bgColor' => 'CCCCCC',
+                    'valign' => 'center'
+                ])->addText($header, [
+                    'bold' => true,
+                    'size' => 10,
+                    'name' => 'Times New Roman'
+                ], [
+                    'alignment' => 'center'
+                ]);
+            }
+            
+            // Данные
+            foreach ($people as $person) {
+                $table->addRow(300);
+                
+                // ФИО
+                $table->addCell(2000)->addText($person->full_name ?? '', [
+                    'size' => 10,
+                    'name' => 'Times New Roman'
+                ]);
+                
+                // Должность
+                $table->addCell(2000)->addText($person->position ?? '', [
+                    'size' => 10,
+                    'name' => 'Times New Roman'
+                ]);
+                
+                // Телефон
+                $table->addCell(2000)->addText($person->phone ?? '', [
+                    'size' => 10,
+                    'name' => 'Times New Roman'
+                ]);
+                
+                // СНИЛС
+                $table->addCell(2000)->addText($person->snils ?? '', [
+                    'size' => 10,
+                    'name' => 'Times New Roman'
+                ]);
+                
+                // ИНН
+                $table->addCell(2000)->addText($person->inn ?? '', [
+                    'size' => 10,
+                    'name' => 'Times New Roman'
+                ]);
+                
+                // Дата рождения
+                $birthDate = $person->birth_date ? $person->birth_date->format('d.m.Y') : '';
+                $table->addCell(2000)->addText($birthDate, [
+                    'size' => 10,
+                    'name' => 'Times New Roman'
+                ]);
+                
+                // Примечание (адрес)
+                $table->addCell(2000)->addText($person->address ?? '', [
+                    'size' => 10,
+                    'name' => 'Times New Roman'
+                ]);
+                
+                // Статус
+                $table->addCell(2000)->addText($person->status ?? '', [
+                    'size' => 10,
+                    'name' => 'Times New Roman'
+                ]);
+            }
+            
+            // Сохраняем файл
+            $filename = 'Список_людей_' . date('Y-m-d_His') . '.docx';
+            $filePath = storage_path('app/temp/' . $filename);
+            
+            // Создаем директорию, если её нет
+            if (!file_exists(storage_path('app/temp'))) {
+                mkdir(storage_path('app/temp'), 0755, true);
+            }
+            
+            $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
+            $objWriter->save($filePath);
+            
+            // Отправляем файл с правильной кодировкой имени
+            $encodedFilename = rawurlencode($filename);
+            return response()->download($filePath, $filename, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            ])->deleteFileAfterSend(true);
+            
+        } catch (\Exception $e) {
+            \Log::error('Export to Word error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->route('safety.index')
+                ->with('error', 'Ошибка при экспорте: ' . $e->getMessage());
         }
     }
 }

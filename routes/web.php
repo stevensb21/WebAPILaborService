@@ -40,6 +40,9 @@ Route::post('/safety/update-certificate-info/{id}', [SafetyController::class, 'u
     // Скачать резервную копию БД
     Route::get('/safety/backup', [BackupController::class, 'download'])->name('safety.backup');
     
+    // Экспорт в Word
+    Route::get('/safety/export-word', [SafetyController::class, 'exportToWord'])->name('safety.export-word');
+    
     // Получить информацию о файлах человека
     Route::get('/safety/person-files/{id}', [SafetyController::class, 'getPersonFiles'])->name('safety.person-files');
     

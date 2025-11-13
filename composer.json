@@ -10,6 +10,7 @@
         "laravel/framework": "^12.0",
         "laravel/pail": "*",
         "laravel/tinker": "^2.10.1",
+        "phpoffice/phpword": "^1.2",
         "setasign/fpdi": "^2.6"
     },
     "require-dev": {

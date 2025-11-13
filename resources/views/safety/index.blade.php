@@ -56,6 +56,9 @@
                          <a href="{{ route('safety.backup') }}" class="btn btn-outline-secondary me-2">
                              <i class="fas fa-database"></i> Скачать резервную копию
                          </a>
+                         <a href="{{ route('safety.export-word') . '?' . http_build_query(request()->query()) }}" class="btn btn-outline-success me-2">
+                             <i class="fas fa-file-word"></i> Экспорт в Word
+                         </a>
                          <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#certificateOrderModal">
                              <i class="fas fa-sort"></i> Порядок сертификатов
                          </button>
