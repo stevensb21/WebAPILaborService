@@ -44,7 +44,7 @@ RUN chmod +x /usr/local/bin/merge_pdf.py
 
 # Настройка PHP-FPM для работы в Docker сети (слушать на всех интерфейсах)
 RUN sed -i 's/listen = 127.0.0.1:9000/listen = 0.0.0.0:9000/' /usr/local/etc/php-fpm.d/www.conf && \
-    sed -i 's/;listen.allowed_clients = 127.0.0.1/listen.allowed_clients = /' /usr/local/etc/php-fpm.d/www.conf
+    sed -i 's/^listen.allowed_clients = /;listen.allowed_clients = /' /usr/local/etc/php-fpm.d/www.conf
 
 # Установка PHP зависимостей
 RUN composer install --optimize-autoloader --no-interaction --ignore-platform-reqs
