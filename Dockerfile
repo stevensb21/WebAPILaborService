@@ -82,9 +82,18 @@ RUN if [ ! -f .env ]; then \
 # Настройка PHP для больших файлов
 RUN echo "upload_max_filesize = 200M" >> /usr/local/etc/php/conf.d/uploads.ini && \
     echo "post_max_size = 200M" >> /usr/local/etc/php/conf.d/uploads.ini && \
-    echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/uploads.ini && \
-    echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/uploads.ini && \
-    echo "max_input_time = 300" >> /usr/local/etc/php/conf.d/uploads.ini
+    echo "memory_limit = 1024M" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    echo "max_execution_time = 600" >> /usr/local/etc/php/conf.d/uploads.ini && \
+    echo "max_input_time = 600" >> /usr/local/etc/php/conf.d/uploads.ini
+
+# Настройка PHP-FPM для стабильности
+RUN sed -i 's/;pm.max_children = 5/pm.max_children = 50/' /usr/local/etc/php-fpm.d/www.conf && \
+    sed -i 's/;pm.start_servers = 2/pm.start_servers = 10/' /usr/local/etc/php-fpm.d/www.conf && \
+    sed -i 's/;pm.min_spare_servers = 1/pm.min_spare_servers = 5/' /usr/local/etc/php-fpm.d/www.conf && \
+    sed -i 's/;pm.max_spare_servers = 3/pm.max_spare_servers = 20/' /usr/local/etc/php-fpm.d/www.conf && \
+    sed -i 's/;pm.max_requests = 500/pm.max_requests = 1000/' /usr/local/etc/php-fpm.d/www.conf && \
+    sed -i 's/;request_terminate_timeout = 0/request_terminate_timeout = 600s/' /usr/local/etc/php-fpm.d/www.conf && \
+    sed -i 's/;catch_workers_output = yes/catch_workers_output = yes/' /usr/local/etc/php-fpm.d/www.conf
 
 EXPOSE 9000
 

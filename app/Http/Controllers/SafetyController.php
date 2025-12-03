@@ -20,21 +20,26 @@ class SafetyController extends Controller
      */
     private function getWebApiToken()
     {
-        // Ищем существующий токен для веб-интерфейса
-        $webToken = ApiToken::where('name', 'Web Interface')
-            ->where('is_active', true)
-            ->first();
+        try {
+            // Ищем существующий токен для веб-интерфейса
+            $webToken = ApiToken::where('name', 'Web Interface')
+                ->where('is_active', true)
+                ->first();
+                
+            if (!$webToken) {
+                // Создаем новый токен для веб-интерфейса
+                $webToken = ApiToken::createToken(
+                    'Web Interface',
+                    'Автоматически созданный токен для веб-интерфейса',
+                    null // Без срока действия
+                );
+            }
             
-        if (!$webToken) {
-            // Создаем новый токен для веб-интерфейса
-            $webToken = ApiToken::createToken(
-                'Web Interface',
-                'Автоматически созданный токен для веб-интерфейса',
-                null // Без срока действия
-            );
+            return $webToken->token ?? '';
+        } catch (\Exception $e) {
+            \Log::error('Error getting web API token', ['error' => $e->getMessage()]);
+            return '';
         }
-        
-        return $webToken->token;
     }
     /**
      * Получить информацию о файлах человека
@@ -266,6 +271,9 @@ class SafetyController extends Controller
             // Начинаем с базового запроса без загрузки сертификатов для оптимизации
             $query = People::select('id', 'full_name', 'position', 'phone', 'snils', 'inn', 'birth_date', 'photo', 'passport_page_1', 'passport_page_5', 'certificates_file', 'status', 'address', 'created_at', 'updated_at');
             
+            // Ограничиваем количество записей для предотвращения перегрузки памяти
+            $maxRecords = 10000; // Максимум 10000 записей
+            
             // Фильтр по ФИО (без учета регистра и лишних пробелов)
             if ($request->filled('search_fio')) {
                 $searchTerm = trim(preg_replace('/\s+/', ' ', $request->search_fio));
@@ -325,36 +333,71 @@ class SafetyController extends Controller
             // Создаем ключ кэша на основе параметров запроса
             $cacheKey = 'people_list_' . md5(serialize($request->all()));
             
-            // Кэшируем весь результат на 5 минут
-            $people = \Cache::remember($cacheKey, 300, function() use ($query) {
-            $people = $query->get();
-                
-                // Загружаем сертификаты для людей отдельно (только если есть люди)
+            // Кэшируем весь результат на 5 минут с обработкой ошибок кэша
+            try {
+                $people = \Cache::remember($cacheKey, 300, function() use ($query, $maxRecords) {
+                    $people = $query->limit($maxRecords)->get();
+                    
+                    // Загружаем сертификаты для людей отдельно (только если есть люди)
+                    if ($people->count() > 0) {
+                        try {
+                            $people->load(['certificates' => function($q) {
+                                $q->select('certificates.id', 'certificates.name', 'certificates.expiry_date')
+                                  ->withPivot('assigned_date', 'certificate_number', 'status', 'notes', 'certificate_file', 'certificate_file_original_name', 'certificate_file_mime_type', 'certificate_file_size');
+                            }]);
+                        } catch (\Exception $e) {
+                            \Log::warning('Error loading certificates', ['error' => $e->getMessage()]);
+                        }
+                    }
+                    
+                    return $people;
+                });
+            } catch (\Exception $e) {
+                \Log::warning('Cache error, loading without cache', ['error' => $e->getMessage()]);
+                $people = $query->limit($maxRecords)->get();
                 if ($people->count() > 0) {
-                    $people->load(['certificates' => function($q) {
-                        $q->select('certificates.id', 'certificates.name', 'certificates.expiry_date')
-                          ->withPivot('assigned_date', 'certificate_number', 'status', 'notes', 'certificate_file', 'certificate_file_original_name', 'certificate_file_mime_type', 'certificate_file_size');
-                    }]);
+                    try {
+                        $people->load(['certificates' => function($q) {
+                            $q->select('certificates.id', 'certificates.name', 'certificates.expiry_date')
+                              ->withPivot('assigned_date', 'certificate_number', 'status', 'notes', 'certificate_file', 'certificate_file_original_name', 'certificate_file_mime_type', 'certificate_file_size');
+                        }]);
+                    } catch (\Exception $e2) {
+                        \Log::warning('Error loading certificates', ['error' => $e2->getMessage()]);
+                    }
                 }
-                
-                return $people;
-            });
+            }
             
-            // Кэшируем сертификаты на 1 час (они редко изменяются)
-            $certificates = \Cache::remember('certificates_list', 3600, function() {
-                return Certificate::select('certificates.id', 'certificates.name', 'certificates.description', 'certificates.expiry_date')
+            // Кэшируем сертификаты на 1 час (они редко изменяются) с обработкой ошибок
+            try {
+                $certificates = \Cache::remember('certificates_list', 3600, function() {
+                    return Certificate::select('certificates.id', 'certificates.name', 'certificates.description', 'certificates.expiry_date')
+                        ->leftJoin('certificate_orders', 'certificates.id', '=', 'certificate_orders.certificate_id')
+                        ->orderBy('certificate_orders.sort_order', 'asc')
+                        ->orderBy('certificates.id', 'asc')
+                        ->get();
+                });
+            } catch (\Exception $e) {
+                \Log::warning('Cache error for certificates, loading without cache', ['error' => $e->getMessage()]);
+                $certificates = Certificate::select('certificates.id', 'certificates.name', 'certificates.description', 'certificates.expiry_date')
                     ->leftJoin('certificate_orders', 'certificates.id', '=', 'certificate_orders.certificate_id')
                     ->orderBy('certificate_orders.sort_order', 'asc')
                     ->orderBy('certificates.id', 'asc')
                     ->get();
-            });
+            }
             
-            // Кэшируем должности на 30 минут
-            $positions = \Cache::remember('positions_list', 1800, function() {
-                return People::whereNotNull('position')
+            // Кэшируем должности на 30 минут с обработкой ошибок
+            try {
+                $positions = \Cache::remember('positions_list', 1800, function() {
+                    return People::whereNotNull('position')
+                        ->distinct()
+                        ->pluck('position');
+                });
+            } catch (\Exception $e) {
+                \Log::warning('Cache error for positions, loading without cache', ['error' => $e->getMessage()]);
+                $positions = People::whereNotNull('position')
                     ->distinct()
                     ->pluck('position');
-            });
+            }
             
             \Log::info('Data loaded successfully', [
                 'people_count' => $people->count(),
